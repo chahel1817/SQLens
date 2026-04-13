@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 SQLLens AI: SQL Query Optimizer Visualizer
 
-## Getting Started
+A premium, interactive tool to visualize PostgreSQL execution plans and get AI-powered optimization suggestions.
 
-First, run the development server:
+## 📁 Project Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **`client/`**: Next.js (App Router) frontend with interactive D3/React Flow visualizations.
+- **`server/`**: Express.js backend for PostgreSQL query analysis.
+- **`db/`**: SQL scripts and schema definitions.
+
+## 🛠 Tech Stack
+
+- **Frontend**: Next.js, React Flow, Lucide Icons, Framer Motion, Tailwind CSS.
+- **Backend**: Node.js, Express, `pg` (PostgreSQL client).
+- **Visualization**: Interactive tree nodes with cost and time metrics.
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+- PostgreSQL running locally or on a server.
+- Node.js (v18+ recommended).
+
+### 2. Database Setup
+Create a database named `sqlens` and run the schema found in `db/schema.sql`.
+
+### 3. Environment Configuration
+Update weights and credentials in `server/.env`:
+```env
+DB_USER=postgres
+DB_HOST=localhost
+DB_NAME=sqlens
+DB_PASSWORD=your_password
+DB_PORT=5432
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Installation & Running
+From the root directory:
+```bash
+# Install root dependencies
+npm install
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Install all sub-project dependencies
+npm run install:all
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Start both frontend and backend
+npm run dev
+```
 
-## Learn More
+## 🧠 Key Features
 
-To learn more about Next.js, take a look at the following resources:
+- **EXPLAIN ANALYZE Integration**: Get real-time execution timing, not just estimates.
+- **Visual Plan Tree**: Interactive visualization of nested loop joins, sequential scans, and index lookups.
+- **Optimizer Insights**: Automatic detection of performance bottlenecks (e.g., missing indexes).
+- **Query History**: Keep track of your analysis history and performance improvements.
+- **Security First**: Only allows `SELECT` and `READ` queries for safe analysis.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+Built with ❤️ by SQLLens Team
