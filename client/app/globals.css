@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ── Brand DNA (from Logo) ── */
+  --brand-orange: #FF7A18;
+  --brand-pink: #FF3D77;
+  --brand-purple: #6A11CB;
+  --brand-navy: #2D1B69;
+  --brand-cream: #FBF5EF;
+
+  --gradient-brand: linear-gradient(135deg, #FF7A18, #FF3D77, #6A11CB);
+  --gradient-btn: linear-gradient(135deg, #FF7A18, #FF3D77);
+  --gradient-subtle: linear-gradient(135deg, rgba(255, 122, 24, 0.06), rgba(255, 61, 119, 0.06), rgba(106, 17, 203, 0.04));
+
+  /* ── Backgrounds (Warm) ── */
+  --bg-page: #F9F6F2;
+  --bg-card: #FFFFFF;
+  --bg-warm: #FDF8F4;
+  --bg-soft: #F6F1EB;
+
+  /* ── Text ── */
+  --text-main: #1E1232;
+  --text-secondary: #5A4E6F;
+  --text-muted: #9B8FB0;
+
+  /* ── Borders ── */
+  --border: #E8DDD2;
+  --border-hover: #D4C4B4;
+
+  /* ── Status ── */
+  --success: #22C55E;
+  --error: #EF4444;
+  --warning: #F59E0B;
+
+  /* ── Shadows (Warm) ── */
+  --shadow-sm: 0 2px 8px rgba(45, 27, 105, 0.04);
+  --shadow-card: 0 8px 32px rgba(45, 27, 105, 0.06);
+  --shadow-card-hover: 0 16px 48px rgba(45, 27, 105, 0.10);
+  --shadow-btn: 0 8px 24px rgba(255, 61, 119, 0.35);
+  --shadow-btn-hover: 0 12px 36px rgba(255, 61, 119, 0.50);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Subtle warm ambient glow */
+body::before {
+  content: "";
+  position: fixed;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255, 122, 24, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  bottom: -200px;
+  left: -100px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(106, 17, 203, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+::selection {
+  background: rgba(255, 61, 119, 0.15);
+  color: var(--brand-pink);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
