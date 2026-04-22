@@ -1,46 +1,28 @@
-# Root .gitignore for SQLens
-
 # Dependencies
 node_modules/
-client/node_modules/
 server/node_modules/
-
-# Next.js build output
-.next/
-client/.next/
-out/
-client/out/
-
-# Production builds
-dist/
-server/dist/
-build/
-client/build/
+client/node_modules/
 
 # Environment Variables
 .env
+server/.env
+client/.env
 .env.local
 .env.*.local
-server/.env
-client/.env.local
 
-# Debug logs
+# Debugging
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# IDE / Editor
+# IDE / System files
 .vscode/
 .idea/
-*.swp
-*.swo
 .DS_Store
-
-# OS related
 Thumbs.db
-ehthumbs.db
 
-# Misc
-.cache/
-.npm/
+# Build files
+dist/
+build/
+.next/
+out/

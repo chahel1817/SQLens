@@ -1,58 +1,63 @@
-# 🚀 SQLLens AI: SQL Query Optimizer Visualizer
+# 🚀 SQLens: SQL Performance Analyzer
 
-A premium, interactive tool to visualize PostgreSQL execution plans and get AI-powered optimization suggestions.
+**SQLens** is a powerful web application designed to help developers analyze, optimize, and visualize SQL query performance. It provides a unique "sandbox" environment for every user, allowing them to write and test queries safely without interfering with others.
 
-## 📁 Project Structure
+## ✨ Current Features
 
-- **`client/`**: Next.js (App Router) frontend with interactive D3/React Flow visualizations.
-- **`server/`**: Express.js backend for PostgreSQL query analysis.
-- **`db/`**: SQL scripts and schema definitions.
+- **🔐 Secure Authentication**: Full JWT-based signup and login system.
+- **🛡️ Private User Sandboxes**: Automatic creation of a dedicated PostgreSQL `SCHEMA` for every new user upon registration.
+- **⚡ Multi-tenant Architecture**: Middleware that dynamically switches the database `search_path` based on the authenticated user.
+- **🛠️ Backend Core**: Robust Express.js API with a PostgreSQL connection pool.
 
-## 🛠 Tech Stack
+## 🏗️ Technology Stack
 
-- **Frontend**: Next.js, React Flow, Lucide Icons, Framer Motion, Tailwind CSS.
-- **Backend**: Node.js, Express, `pg` (PostgreSQL client).
-- **Visualization**: Interactive tree nodes with cost and time metrics.
+- **Backend**: Node.js, Express.js
+- **Database**: PostgreSQL
+- **Security**: JWT (JSON Web Tokens), Bcrypt.js (Password Hashing)
+- **Frontend**: Next.js (Coming Soon)
 
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
-- PostgreSQL running locally or on a server.
-- Node.js (v18+ recommended).
+- Node.js (v18 or higher)
+- PostgreSQL installed and running
 
-### 2. Database Setup
-Create a database named `sqlens` and run the schema found in `db/schema.sql`.
+### 2. Installation
+```bash
+# Clone the repository
+git clone <your-repo-url>
 
-### 3. Environment Configuration
-Update weights and credentials in `server/.env`:
-```env
-DB_USER=postgres
-DB_HOST=localhost
-DB_NAME=sqlens
-DB_PASSWORD=your_password
-DB_PORT=5432
+# Install server dependencies
+cd server
+npm install
 ```
 
-### 4. Installation & Running
-From the root directory:
+### 3. Database Setup
+Run the following SQL in your PostgreSQL terminal:
+```sql
+CREATE DATABASE sqlens;
+-- Followed by the schema provided in db/init.sql
+```
+
+### 4. Configuration
+Create a `.env` file in the `server/` directory:
+```env
+PORT=5000
+DATABASE_URL=postgres://your_user:your_password@localhost:5432/sqlens
+JWT_SECRET=your_secret_key
+```
+
+### 5. Start the Server
 ```bash
-# Install root dependencies
-npm install
-
-# Install all sub-project dependencies
-npm run install:all
-
-# Start both frontend and backend
 npm run dev
 ```
 
-## 🧠 Key Features
-
-- **EXPLAIN ANALYZE Integration**: Get real-time execution timing, not just estimates.
-- **Visual Plan Tree**: Interactive visualization of nested loop joins, sequential scans, and index lookups.
-- **Optimizer Insights**: Automatic detection of performance bottlenecks (e.g., missing indexes).
-- **Query History**: Keep track of your analysis history and performance improvements.
-- **Security First**: Only allows `SELECT` and `READ` queries for safe analysis.
+## 📈 Roadmap
+- [x] Backend Auth & Schema Provisioning
+- [ ] Query Execution Engine
+- [ ] EXPLAIN ANALYZE Parser
+- [ ] SQL Optimization Suggestions
+- [ ] Interactive Dashboard (Frontend)
 
 ---
-Built with ❤️ by SQLLens Team
+Developed by [Your Name]
