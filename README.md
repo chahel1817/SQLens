@@ -35,7 +35,7 @@ npm install
 ### 3. Database Setup
 Run the following SQL in your PostgreSQL terminal:
 ```sql
-CREATE DATABASE sqlens;
+CREATE DATABASE sql_optimizer;
 -- Followed by the schema provided in db/init.sql
 ```
 
@@ -43,7 +43,7 @@ CREATE DATABASE sqlens;
 Create a `.env` file in the `server/` directory:
 ```env
 PORT=5000
-DATABASE_URL=postgres://your_user:your_password@localhost:5432/sqlens
+DATABASE_URL=postgres://your_user:your_password@localhost:5432/sql_optimizer
 JWT_SECRET=your_secret_key
 ```
 
@@ -60,4 +60,4 @@ npm run dev
 - [ ] Interactive Dashboard (Frontend)
 
 ---
-Developed by [Your Name]
+Developed by Chahel Tanna
