@@ -1,66 +1,305 @@
 /**
- * Analyzes the PostgreSQL Explain Plan and returns human-readable optimization suggestions.
+ * SQLens Optimizer Service
+ * 
+ * Two-layer intelligence:
+ *   Layer 1: Rule-based pattern matching (instant, free, runs on EVERY query)
+ *   Layer 2: AI-powered deep analysis via OpenRouter (on-demand)
  */
-exports.generateSuggestions = (plan) => {
+
+// ═══════════════════════════════════════════════════════
+//  LAYER 1: RULE-BASED QUERY ANALYZER
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Analyzes the raw MySQL query text for common anti-patterns.
+ * Works on ALL query types — SELECT, INSERT, UPDATE, DELETE, CREATE, etc.
+ */
+exports.analyzeQuery = (rawQuery) => {
     const suggestions = [];
+    const q = rawQuery.trim();
+    const upper = q.toUpperCase();
 
-    // Postgres returns the plan as an array containing one object
-    const mainPlan = plan[0].Plan;
+    // ── SELECT * (bad practice) ──
+    if (/\bSELECT\s+\*/i.test(q)) {
+        suggestions.push({
+            type: 'WARNING',
+            message: 'Avoid using SELECT * in production',
+            improvement: 'Specify only the columns you need. SELECT * fetches unnecessary data, slows down queries, and breaks if the table schema changes.',
+            fix: q.replace(/SELECT\s+\*/i, 'SELECT column1, column2')
+        });
+    }
 
-    // Helper function to recursively search for issues in the plan tree
-    const traversePlan = (node) => {
-        // 1. Detect Sequential Scans (The #1 enemy of performance)
-        if (node['Node Type'] === 'Seq Scan') {
-            const tableName = node['Relation Name'];
-            const filter = node['Filter'];
+    // ── DELETE / UPDATE without WHERE (DANGEROUS) ──
+    if (/\b(DELETE\s+FROM|UPDATE\s+\w+\s+SET)\b/i.test(q) && !/\bWHERE\b/i.test(q)) {
+        const action = upper.startsWith('DELETE') ? 'DELETE' : 'UPDATE';
+        suggestions.push({
+            type: 'CRITICAL',
+            message: `⚠️ ${action} without WHERE clause — affects ALL rows!`,
+            improvement: `This will ${action === 'DELETE' ? 'delete' : 'update'} every row in the table. Always add a WHERE clause to target specific rows.`,
+            fix: q + ' WHERE id = <condition>'
+        });
+    }
 
-            let suggestion = {
-                type: 'CRITICAL',
-                message: `Sequential Scan detected on table "${tableName}".`,
-                improvement: `This table is being read row-by-row. Consider adding an INDEX on the columns used in your WHERE clause.`
-            };
+    // ── LIKE with leading wildcard ──
+    if (/LIKE\s+['"]%/i.test(q)) {
+        suggestions.push({
+            type: 'WARNING',
+            message: 'Leading wildcard in LIKE prevents index usage',
+            improvement: "LIKE '%value' forces a full table scan. Consider using LIKE 'value%' (trailing wildcard) which can use indexes, or use a FULLTEXT index for text search."
+        });
+    }
 
-            if (filter) {
-                suggestion.improvement = `Consider adding an INDEX on the columns involved in: ${filter}`;
-            }
+    // ── SELECT without LIMIT on large queries ──
+    if (/\bSELECT\b/i.test(q) && !/\bLIMIT\b/i.test(q) && !/\bCOUNT\s*\(/i.test(q) && !/\bSUM\s*\(/i.test(q) && !/\bAVG\s*\(/i.test(q)) {
+        suggestions.push({
+            type: 'INFO',
+            message: 'Consider adding LIMIT to your SELECT',
+            improvement: 'Without LIMIT, you may fetch thousands of rows. Use LIMIT to paginate results and improve performance.',
+            fix: q.replace(/;?\s*$/, ' LIMIT 100;')
+        });
+    }
 
-            suggestions.push(suggestion);
-        }
+    // ── ORDER BY without INDEX hint ──
+    if (/\bORDER\s+BY\b/i.test(q) && !/\bLIMIT\b/i.test(q)) {
+        suggestions.push({
+            type: 'INFO',
+            message: 'ORDER BY without LIMIT sorts entire result set',
+            improvement: 'Sorting large datasets is expensive. Add LIMIT to only sort and return what you need. Also ensure the ORDER BY column has an index.'
+        });
+    }
 
-        // 2. Detect high cost operations
-        if (node['Total Cost'] > 1000) {
-            suggestions.push({
-                type: 'WARNING',
-                message: `High cost operation detected (${node['Node Type']}).`,
-                improvement: `Total cost is ${node['Total Cost']}. Check if you can pre-filter data or simplify joins.`
-            });
-        }
+    // ── Subquery in WHERE (could be a JOIN) ──
+    if (/WHERE\s+\w+\s+IN\s*\(\s*SELECT/i.test(q)) {
+        suggestions.push({
+            type: 'WARNING',
+            message: 'Subquery in WHERE could be replaced with JOIN',
+            improvement: 'Subqueries in WHERE clauses are often slower than JOINs. Consider rewriting: SELECT ... FROM a JOIN b ON a.id = b.a_id instead of WHERE id IN (SELECT ...).'
+        });
+    }
 
-        // 3. Check for specific expensive joins
-        if (node['Node Type'] === 'Nested Loop' && node['Actual Rows'] > 100) {
+    // ── Multiple INSERT without batch syntax ──
+    if (/INSERT\s+INTO/i.test(q)) {
+        const insertCount = (q.match(/INSERT\s+INTO/gi) || []).length;
+        if (insertCount > 1) {
             suggestions.push({
                 type: 'INFO',
-                message: 'Nested Loop Join with many rows.',
-                improvement: 'This can be slow. Ensure columns used for joining are indexed.'
+                message: 'Use batch INSERT for multiple rows',
+                improvement: 'Instead of multiple INSERT statements, use: INSERT INTO table VALUES (...), (...), (...); — this is significantly faster.'
             });
         }
+    }
 
-        // Walk down the tree (Parallel Plans / Subplans)
-        if (node.Plans) {
-            node.Plans.forEach(traversePlan);
-        }
-    };
-
-    traversePlan(mainPlan);
-
-    // If everything looks grand
-    if (suggestions.length === 0) {
+    // ── CREATE TABLE without PRIMARY KEY ──
+    if (/CREATE\s+TABLE/i.test(q) && !/PRIMARY\s+KEY/i.test(q)) {
         suggestions.push({
-            type: 'SUCCESS',
-            message: 'Query plan looks efficient!',
-            improvement: 'No major bottlenecks detected.'
+            type: 'WARNING',
+            message: 'Table created without PRIMARY KEY',
+            improvement: 'Every table should have a PRIMARY KEY. It uniquely identifies rows and dramatically improves query performance.'
+        });
+    }
+
+    // ── SELECT DISTINCT (may indicate join issue) ──
+    if (/\bSELECT\s+DISTINCT\b/i.test(q)) {
+        suggestions.push({
+            type: 'INFO',
+            message: 'SELECT DISTINCT may indicate a join problem',
+            improvement: 'If you need DISTINCT, check if your JOINs are producing duplicate rows. Fixing the join is better than adding DISTINCT.'
+        });
+    }
+
+    // ── != NULL instead of IS NOT NULL ──
+    if (/!=\s*NULL|<>\s*NULL/i.test(q)) {
+        suggestions.push({
+            type: 'CRITICAL',
+            message: "Using != NULL won't work — use IS NOT NULL",
+            improvement: 'In SQL, NULL is not a value — it\'s the absence of a value. Use IS NULL or IS NOT NULL instead of = NULL or != NULL.',
+            fix: q.replace(/!=\s*NULL/gi, 'IS NOT NULL').replace(/<>\s*NULL/gi, 'IS NOT NULL')
+        });
+    }
+
+    // ── = NULL instead of IS NULL ──
+    if (/[^!<>]=\s*NULL/i.test(q) && !/IS\s+(NOT\s+)?NULL/i.test(q)) {
+        suggestions.push({
+            type: 'CRITICAL',
+            message: "Using = NULL won't work — use IS NULL",
+            improvement: 'In SQL, you must use IS NULL to check for NULL values. The = operator cannot compare to NULL.',
+            fix: q.replace(/=\s*NULL/gi, 'IS NULL')
+        });
+    }
+
+    // ── Functions on indexed columns in WHERE ──
+    if (/WHERE\s+(?:UPPER|LOWER|YEAR|MONTH|DATE|SUBSTRING|TRIM|CONCAT)\s*\(/i.test(q)) {
+        suggestions.push({
+            type: 'WARNING',
+            message: 'Function on column in WHERE prevents index usage',
+            improvement: 'Wrapping a column in a function (e.g., UPPER(name)) prevents the database from using indexes. Use computed columns or expression indexes instead.'
         });
     }
 
     return suggestions;
+};
+
+
+// ═══════════════════════════════════════════════════════
+//  LAYER 1B: EXPLAIN PLAN ANALYZER (SELECT only)
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Analyzes the PostgreSQL EXPLAIN plan for performance issues.
+ */
+exports.analyzePlan = (plan) => {
+    const suggestions = [];
+
+    if (!plan || !plan[0] || !plan[0].Plan) return suggestions;
+
+    const mainPlan = plan[0].Plan;
+
+    const traversePlan = (node) => {
+        // Sequential / Full Table Scan
+        if (node['Node Type'] === 'Seq Scan') {
+            const tableName = node['Relation Name'];
+            const filter = node['Filter'];
+            const rows = node['Actual Rows'] || node['Plan Rows'] || 0;
+
+            if (rows > 50 || filter) {
+                suggestions.push({
+                    type: 'CRITICAL',
+                    message: `Full Table Scan on "${tableName}" (${rows} rows scanned)`,
+                    improvement: filter
+                        ? `Add an INDEX on the columns in: ${filter.replace(/\(/g, '').replace(/\)/g, '')}`
+                        : `Table "${tableName}" is being scanned row-by-row. Add an index on frequently filtered columns.`,
+                    fix: `CREATE INDEX idx_${tableName} ON ${tableName}(<column_name>);`
+                });
+            }
+        }
+
+        // High cost
+        if (node['Total Cost'] > 500) {
+            suggestions.push({
+                type: 'WARNING',
+                message: `High-cost operation: ${node['Node Type']} (cost: ${Math.round(node['Total Cost'])})`,
+                improvement: 'This operation is expensive. Consider adding indexes, reducing the dataset with WHERE clauses, or simplifying joins.'
+            });
+        }
+
+        // Sort without index
+        if (node['Node Type'] === 'Sort' && node['Actual Rows'] > 100) {
+            suggestions.push({
+                type: 'WARNING',
+                message: `Sorting ${node['Actual Rows']} rows in memory`,
+                improvement: 'Large sorts are slow. Add an index on the ORDER BY column to avoid in-memory sorting.'
+            });
+        }
+
+        // Nested Loop with many rows
+        if (node['Node Type'] === 'Nested Loop' && node['Actual Rows'] > 100) {
+            suggestions.push({
+                type: 'WARNING',
+                message: 'Nested Loop Join processing many rows',
+                improvement: 'Nested Loops are slow for large datasets. Ensure JOIN columns are indexed, or consider rewriting with a Hash Join.'
+            });
+        }
+
+        // Hash Join with high cost
+        if (node['Node Type'] === 'Hash Join' && node['Total Cost'] > 1000) {
+            suggestions.push({
+                type: 'INFO',
+                message: 'Hash Join with high cost detected',
+                improvement: 'Hash Joins are generally efficient, but this one is costly. Verify that the join columns have proper indexes.'
+            });
+        }
+
+        if (node.Plans) node.Plans.forEach(traversePlan);
+    };
+
+    traversePlan(mainPlan);
+    return suggestions;
+};
+
+
+// ═══════════════════════════════════════════════════════
+//  LAYER 2: AI-POWERED DEEP ANALYSIS (OpenRouter)
+// ═══════════════════════════════════════════════════════
+
+/**
+ * Sends the query + execution plan to an LLM for deep, contextual optimization advice.
+ */
+exports.aiAnalyze = async (rawQuery, explainPlan, ruleSuggestions) => {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+        return { error: 'OpenRouter API key not configured' };
+    }
+
+    const systemPrompt = `You are SQLens AI — an expert MySQL query optimizer. 
+You receive a MySQL query, its execution plan, and some rule-based suggestions.
+
+Your job:
+1. Give 2-4 SPECIFIC, ACTIONABLE optimization tips
+2. If you can provide a rewritten/optimized version of the query, do so
+3. Rate the query performance: EXCELLENT, GOOD, NEEDS IMPROVEMENT, or POOR
+4. Be concise — max 2-3 sentences per tip
+5. Use MySQL syntax in any SQL you write (not PostgreSQL)
+
+Respond in this JSON format:
+{
+  "rating": "GOOD",
+  "summary": "One-line summary of the query quality",
+  "tips": [
+    { "title": "Short title", "detail": "Explanation", "fix": "SQL code if applicable" }
+  ],
+  "optimizedQuery": "The rewritten query if applicable, or null"
+}`;
+
+    const userPrompt = `
+MySQL Query:
+\`\`\`sql
+${rawQuery}
+\`\`\`
+
+${explainPlan ? `Execution Plan:\n\`\`\`json\n${JSON.stringify(explainPlan, null, 2)}\n\`\`\`` : 'No execution plan available (non-SELECT query).'}
+
+Rule-based issues found: ${ruleSuggestions.length > 0 ? ruleSuggestions.map(s => s.message).join(', ') : 'None'}
+`;
+
+    try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'http://localhost:3000',
+                'X-Title': 'SQLens Query Optimizer'
+            },
+            body: JSON.stringify({
+                model: 'google/gemini-2.0-flash-001',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.3,
+                max_tokens: 800
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error('OpenRouter error:', data);
+            return { error: 'AI analysis failed' };
+        }
+
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) return { error: 'Empty AI response' };
+
+        // Parse the JSON from the AI response
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        return { error: 'Could not parse AI response', raw: content };
+    } catch (err) {
+        console.error('AI Analysis Error:', err.message);
+        return { error: err.message };
+    }
 };

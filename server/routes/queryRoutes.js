@@ -5,5 +5,6 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 // ALL query routes are protected by authMiddleware
 router.post('/run', authMiddleware, queryController.runQuery);
+router.post('/ai-optimize', authMiddleware, queryController.aiOptimize);
 
 module.exports = router;
