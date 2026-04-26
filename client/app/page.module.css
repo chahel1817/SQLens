@@ -161,18 +161,19 @@
 .navigation {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 36px;
   margin: 0 40px;
 }
 
 .navItem {
-  color: var(--text-secondary);
+  color: var(--text-main);
+  opacity: 0.85;
   font-size: 0.95rem;
   font-weight: 600;
   text-decoration: none;
   padding: 10px 18px;
   border-radius: 12px;
-  transition: var(--transition);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   white-space: nowrap;
   background: transparent;
@@ -182,13 +183,16 @@
 .navItem:hover {
   color: var(--text-main);
   background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
 }
 
 .navItemActive {
   color: var(--brand-accent) !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 0 8px rgba(255, 61, 119, 0.15);
 }
 
 /* ═══════════ PRO STATUS ═══════════ */
@@ -196,11 +200,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 8px 16px;
+  background: var(--bg-header);
+  padding: 6px 14px;
   border-radius: 100px;
   border: 1px solid var(--border);
-  margin-right: 28px;
+  margin-right: 20px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4) inset;
 }
 
 .statusDot {
@@ -225,6 +230,8 @@
   width: 1px;
   height: 12px;
   background: var(--border);
+  opacity: 0.6;
+  margin: 0 8px;
 }
 
 .latency {
@@ -237,10 +244,10 @@
 .actionShell {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 16px;
   background: var(--bg-card);
-  padding: 6px;
-  border-radius: 16px;
+  padding: 8px 24px;
+  border-radius: 100px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
@@ -1122,11 +1129,8 @@
 /* ═══════════ FOOTER ═══════════ */
 .footer {
   margin-top: 60px;
+  padding: 40px 0 20px;
   background: var(--bg-footer);
-  border-top: 1px solid var(--header-border);
-  padding: 60px 24px 30px;
-  color: var(--text-secondary);
-  transition: var(--transition);
 }
 
 .footerInner {
@@ -1134,58 +1138,37 @@
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
-  gap: 60px;
-  flex-wrap: wrap;
-  margin-bottom: 60px;
+  padding: 0 24px;
 }
 
 .footerLeft {
-  flex: 1;
-  min-width: 280px;
+  max-width: 320px;
 }
 
 .footerBrand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 6px;
   margin-bottom: 20px;
 }
 
 .footerFavicon {
-  border-radius: 6px;
-}
-
-.footerBrandText {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.footerBrandName {
-  font-weight: 800;
-  font-size: 1.4rem;
-  color: var(--text-main);
-  letter-spacing: -0.5px;
-  line-height: 1.1;
-}
-
-.footerBrandTier {
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: var(--brand-accent);
-  letter-spacing: 2px;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
 }
 
 .footerTagline {
-  font-size: 0.9rem;
-  line-height: 1.6;
-  max-width: 340px;
-  color: var(--text-secondary);
+  color: #fff;
+  opacity: 1;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.8;
 }
 
 .footerLinks {
   display: flex;
-  gap: 80px;
+  gap: 40px;
   flex-wrap: wrap;
 }
 

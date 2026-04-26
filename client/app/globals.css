@@ -176,6 +176,8 @@
   --success: #22C55E;
   --error: #EF4444;
   --warning: #F59E0B;
+  --neon-green: #00FF66;
+  --neon-blue: #00E4FF;
   --header-height: 80px;
   /* Slightly taller for info-density */
   --radius-sm: 8px;

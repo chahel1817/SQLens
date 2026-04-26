@@ -548,37 +548,37 @@ export default function Home() {
               onClick={() => handleTabChange('dashboard')}
               className={`${styles.navItem} ${activeTab === 'dashboard' ? styles.navItemActive : ''}`}
             >
-              <LayoutDashboard size={14} style={{ marginRight: 8 }} /> Overview
+              <LayoutDashboard size={15} strokeWidth={2.2} style={{ marginRight: 8, opacity: 0.8 }} /> Overview
             </button>
             <button
               onClick={() => handleTabChange('queries')}
               className={`${styles.navItem} ${activeTab === 'queries' ? styles.navItemActive : ''}`}
             >
-              <Database size={14} style={{ marginRight: 8 }} /> Workbench
+              <Database size={15} strokeWidth={2.2} style={{ marginRight: 8, opacity: 0.8 }} /> Workbench
             </button>
             <button
               onClick={() => handleTabChange('performance')}
               className={`${styles.navItem} ${activeTab === 'performance' ? styles.navItemActive : ''}`}
             >
-              <PerformanceIcon size={14} style={{ marginRight: 8 }} /> Analytics
+              <PerformanceIcon size={15} strokeWidth={2.2} style={{ marginRight: 8, opacity: 0.8 }} /> Analytics
             </button>
             <button
               onClick={() => handleTabChange('logs')}
               className={`${styles.navItem} ${activeTab === 'logs' ? styles.navItemActive : ''}`}
             >
-              <Clock size={14} style={{ marginRight: 8 }} /> Logs
+              <Clock size={15} strokeWidth={2.2} style={{ marginRight: 8, opacity: 0.8 }} /> Logs
             </button>
           </nav>
 
           {/* 3. Pro Status Indicators */}
           <div className={styles.statusContainer}>
-            <div className={styles.statusDot} style={{ background: pingMs > 0 ? '#22C55E' : '#EF4444' }}></div>
+            <div className={styles.statusDot} style={{ background: pingMs > 0 ? 'var(--neon-green)' : '#EF4444' }}></div>
             <div className={styles.statusText}>
-              <span>{pingMs > 0 ? 'Connected' : 'Offline'}</span>
-              <span className={styles.statusDivider}></span>
-              <span style={{ opacity: 0.6 }}>localhost:5000</span>
-              <span className={styles.statusDivider}></span>
-              <span className={styles.latency} style={{ color: pingMs > 100 ? '#F59E0B' : pingMs > 0 ? 'var(--success)' : '#EF4444' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-main)', opacity: 0.95 }}>{pingMs > 0 ? 'Connected' : 'Offline'}</span>
+              <span className={styles.statusDivider} style={{ margin: '0 10px' }}></span>
+              <span style={{ opacity: 0.95, color: '#fff', fontWeight: 600 }}>Production Node</span>
+              <span className={styles.statusDivider} style={{ margin: '0 10px' }}></span>
+              <span className={styles.latency} style={{ color: pingMs > 100 ? '#F59E0B' : pingMs > 0 ? 'var(--neon-green)' : '#EF4444', opacity: 0.85, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
                 {pingMs > 0 ? `${pingMs}ms` : 'ERR'}
               </span>
             </div>
@@ -878,12 +878,18 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={styles.footerBottom}>
-          <div className={styles.footerCopy}>
+        <div className={styles.footerBottom} style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className={styles.footerCopy} style={{ opacity: 0.4 }}>
             © 2026 SQLens. All rights reserved.
           </div>
-          <div className={styles.footerCredit}>
-            Made with <Heart size={14} className={styles.heartIcon} /> by SQLens Team
+          <div className={styles.footerCredit} style={{ fontWeight: 700, letterSpacing: '0.5px' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              background: 'linear-gradient(to right, #00E4FF, #a626a4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 15px rgba(0, 228, 255, 0.4)'
+            }}>
+              <ZapIcon size={14} style={{ color: '#00E4FF' }} /> Built for DB Performance Engineers
+            </span>
           </div>
         </div>
       </footer>
