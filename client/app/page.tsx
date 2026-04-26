@@ -76,6 +76,8 @@ const TEMPLATES = [
   { label: 'Describe', query: 'DESCRIBE employees;', icon: '🔍' },
 ];
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 export default function Home() {
   const [query, setQuery] = useState('SHOW TABLES;');
   const [isExecuting, setIsExecuting] = useState(false);
