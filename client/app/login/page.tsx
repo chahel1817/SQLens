@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LogIn, Loader2, AlertCircle, CheckCircle2, Mail, Lock, Zap, Shield, BarChart3, Eye, EyeOff } from 'lucide-react';
 import styles from '../auth.module.css';
 
-export default function Login() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+function LoginContent() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +36,7 @@ export default function Login() {
         setSuccessMsg(null);
 
         try {
-            const res = await fetch('http://localhost:5000/api/auth/login', {
+            const res = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -152,5 +154,13 @@ export default function Login() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function Login() {
+    return (
+        <Suspense fallback={<div className={styles.authPage} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Loader2 className={styles.spinner} size={32} /></div>}>
+            <LoginContent />
+        </Suspense>
     );
 }

@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { UserPlus, Loader2, AlertCircle, Mail, Lock, Check, Zap, Shield, BarChart3, Eye, EyeOff } from 'lucide-react';
 import styles from '../auth.module.css';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 export default function Signup() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -37,7 +39,7 @@ export default function Signup() {
 
         try {
             // 1. Create account
-            const signupRes = await fetch('http://localhost:5000/api/auth/signup', {
+            const signupRes = await fetch(`${API_URL}/api/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -46,7 +48,7 @@ export default function Signup() {
             if (!signupRes.ok) throw new Error(signupData.message || 'Signup failed');
 
             // 2. Auto-login immediately
-            const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+            const loginRes = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
