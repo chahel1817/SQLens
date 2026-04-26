@@ -160,17 +160,39 @@
     left: 14px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--text-muted);
+    color: #94A3B8;
     pointer-events: none;
-    transition: color 0.2s;
+}
+
+.eyeBtn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #94A3B8;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.eyeBtn:hover {
+    color: var(--brand-pink);
+    background: rgba(255, 61, 119, 0.05);
 }
 
 .input {
     width: 100%;
     padding: 13px 16px 13px 44px;
     border-radius: 12px;
-    border: 1.5px solid var(--border);
-    background: var(--bg-card);
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
     font-family: inherit;
     font-size: 0.95rem;
     outline: none;

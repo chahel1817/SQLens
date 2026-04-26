@@ -26,3 +26,10 @@ dist/
 build/
 .next/
 out/
+
+# Agent / AI files
+claude.md
+agents.md
+.gemini/
+.agents/
+_agents/

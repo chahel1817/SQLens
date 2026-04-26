@@ -105,6 +105,12 @@ exports.runQuery = async (req, res) => {
     } catch (error) {
         try { await client.query('ROLLBACK'); } catch (_) { }
         console.error('Query Error:', error.message);
+        try {
+            await db.query(
+                'INSERT INTO public.query_history (user_id, query, execution_time) VALUES ($1, $2, $3)',
+                [userId, query, -1.0]
+            );
+        } catch (logErr) { }
 
         let userMessage = error.message;
         userMessage = userMessage.replace(/relation/gi, 'table');

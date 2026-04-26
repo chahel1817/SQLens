@@ -4,12 +4,13 @@ import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, Loader2, AlertCircle, Mail, Lock, Check, Zap, Shield, BarChart3 } from 'lucide-react';
+import { UserPlus, Loader2, AlertCircle, Mail, Lock, Check, Zap, Shield, BarChart3, Eye, EyeOff } from 'lucide-react';
 import styles from '../auth.module.css';
 
 export default function Signup() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
@@ -129,7 +130,7 @@ export default function Signup() {
                             <label className={styles.label}>Password</label>
                             <div className={styles.inputWrap}>
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     className={`${styles.input} ${password.length > 0 ? (allRulesPassed ? styles.inputValid : styles.inputError) : ''}`}
                                     placeholder="Create a strong password"
                                     value={password}
@@ -137,6 +138,13 @@ export default function Signup() {
                                     required
                                 />
                                 <Lock size={16} className={styles.inputIcon} />
+                                <button
+                                    type="button"
+                                    className={styles.eyeBtn}
+                                    onClick={() => setShowPassword(!showPassword)}
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
                             </div>
                         </div>
 

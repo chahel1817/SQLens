@@ -4,12 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LogIn, Loader2, AlertCircle, CheckCircle2, Mail, Lock, Zap, Shield, BarChart3 } from 'lucide-react';
+import { LogIn, Loader2, AlertCircle, CheckCircle2, Mail, Lock, Zap, Shield, BarChart3, Eye, EyeOff } from 'lucide-react';
 import styles from '../auth.module.css';
 
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -120,7 +121,7 @@ export default function Login() {
                             <label className={styles.label}>Password</label>
                             <div className={styles.inputWrap}>
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     className={styles.input}
                                     placeholder="••••••••"
                                     value={password}
@@ -128,6 +129,13 @@ export default function Login() {
                                     required
                                 />
                                 <Lock size={16} className={styles.inputIcon} />
+                                <button
+                                    type="button"
+                                    className={styles.eyeBtn}
+                                    onClick={() => setShowPassword(!showPassword)}
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
                             </div>
                         </div>
 

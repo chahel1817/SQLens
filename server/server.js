@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
 const queryRoutes = require('./routes/queryRoutes');
+const statsRoutes = require('./routes/statsRoutes');
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/query', queryRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Basic test route
 app.get('/', (req, res) => {
