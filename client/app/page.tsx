@@ -164,7 +164,7 @@ export default function Home() {
       fetchStats(savedToken);
 
       // Real-time Telemetry Connection (SSE / Socket stream)
-      const evtSource = new EventSource(`http://localhost:5000/api/stats/stream?token=${savedToken}`);
+      const evtSource = new EventSource(`${API_URL}/api/stats/stream?token=${savedToken}`);
       evtSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.dashboard) setDbStats(data.dashboard);
@@ -178,7 +178,7 @@ export default function Home() {
       const measurePing = async () => {
         const start = Date.now();
         try {
-          await fetch('http://localhost:5000/');
+          await fetch(`${API_URL}/`);
           setPingMs(Date.now() - start);
         } catch (e) {
           setPingMs(0);
@@ -197,12 +197,13 @@ export default function Home() {
 
   const fetchStats = async (activeToken: string) => {
     try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const authHeader = { 'Authorization': `Bearer ${activeToken}` };
       const [statsRes, slowRes, analyticsRes, logsRes] = await Promise.all([
-        fetch('http://localhost:5000/api/stats/dashboard', { headers: authHeader }),
-        fetch('http://localhost:5000/api/stats/slow-queries', { headers: authHeader }),
-        fetch('http://localhost:5000/api/stats/analytics', { headers: authHeader }),
-        fetch('http://localhost:5000/api/stats/logs', { headers: authHeader })
+        fetch(`${API_URL}/api/stats/dashboard`, { headers: authHeader }),
+        fetch(`${API_URL}/api/stats/slow-queries`, { headers: authHeader }),
+        fetch(`${API_URL}/api/stats/analytics`, { headers: authHeader }),
+        fetch(`${API_URL}/api/stats/logs`, { headers: authHeader })
       ]);
 
       if (statsRes.ok) setDbStats(await statsRes.json());
@@ -232,7 +233,8 @@ export default function Home() {
     setActiveResultTab('results');
 
     try {
-      const res = await fetch('http://localhost:5000/api/query/run', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API_URL}/api/query/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
