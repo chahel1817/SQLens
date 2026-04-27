@@ -1,7 +1,5 @@
 # 🚀 SQLens: Ultimate SQL Performance Analyzer
 
-![SQLens Dashboard Preview](https://chaheltanna.vercel.app/SQLens.png)
-
 **SQLens** is an advanced, production-grade web application designed to help developers and database engineers analyze, optimize, and visualize SQL query performance in real time. Built with a stunning dark mode glassmorphism UI and powered by a robust Next.js and Node/Express architecture, SQLens provides a dedicated "sandbox" environment for every user, allowing them to write and test queries safely without cross-tenant interference.
 
 ## ✨ Key Features
