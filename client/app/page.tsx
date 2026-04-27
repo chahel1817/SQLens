@@ -275,8 +275,46 @@ export default function Home() {
     }
   };
 
-  const applyFix = (fix: string) => {
-    editorRef.current?.setValue(fix);
+  const applyFix = async (fix: string) => {
+    // Determine if the fix should be auto-executed or just loaded into editor
+    const isDDL = /^\s*(CREATE|ALTER|DROP|SET|INDEX)/i.test(fix);
+
+    if (isDDL) {
+      setIsExecuting(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_URL}/api/query/run`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ query: fix }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setResult(data);
+          // Optional: Refresh stats since index might change things
+          if (token) fetchStats(token);
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (err: any) {
+        setError("Auto-Fix failed: " + err.message);
+      } finally {
+        setIsExecuting(false);
+      }
+    } else {
+      // It's a query rewrite, load it into editor and let user run it
+      editorRef.current?.setValue(fix);
+      setQuery(fix);
+
+      // Auto-scroll to top so user sees the change in the editor
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Automatically trigger run after a small delay for better UX
+      setTimeout(() => handleRun(), 300);
+    }
   };
 
   if (isVerifying) {
@@ -427,7 +465,7 @@ export default function Home() {
             <div className={styles.linkGroup}>
               <h4>Connect</h4>
               <a href="https://chaheltanna.vercel.app/" target="_blank" rel="noopener noreferrer">Website</a>
-              <a href="https://discord.com" target="_blank" rel="noopener noreferrer">Discord</a>
+              <a href="https://linkedin.com/in/chaheltanna" target="_blank" rel="noopener noreferrer">LinkedIn</a>
             </div>
           </div>
         </div>

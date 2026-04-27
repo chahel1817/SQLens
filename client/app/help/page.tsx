@@ -1,59 +1,109 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, LifeBuoy, Mail, MessageSquare } from 'lucide-react';
-
-export const metadata = {
-    title: 'Help Center | SQLens',
-    description: 'Get support for SQLens',
-};
+import {
+    ArrowLeft,
+    MessageCircle,
+    HelpCircle,
+    LifeBuoy,
+    Mail,
+    MessagesSquare,
+    Code2,
+    Users,
+    ExternalLink,
+    Search
+} from 'lucide-react';
+import styles from '../docs-styles.module.css';
 
 export default function HelpPage() {
     return (
-        <div style={{ minHeight: '100vh', padding: '40px 20px', maxWidth: '800px', margin: '0 auto' }}>
-            <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--brand-accent)', textDecoration: 'none', marginBottom: '40px', fontWeight: 500 }}>
-                <ArrowLeft size={16} /> Back to Dashboard
-            </Link>
+        <div className={styles.docsContainer}>
+            <div className={styles.docsLayout}>
+                {/* Sidebar */}
+                <aside className={styles.sidebar}>
+                    <Link href="/" className={styles.backLink}>
+                        <ArrowLeft size={16} /> Back to Dashboard
+                    </Link>
 
-            <header style={{ marginBottom: '40px', textAlign: 'center' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: '20px' }}>
-                    <LifeBuoy size={32} color="var(--brand-accent)" />
-                </div>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '16px' }}>How can we help?</h1>
-                <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '500px', margin: '0 auto' }}>
-                    Find answers, troubleshooting tips, and contact our support team.
-                </p>
-            </header>
+                    <nav className={styles.navGroup}>
+                        <div className={styles.navTitle}>Support</div>
+                        <div className={styles.navItemActive}>FAQ</div>
+                        <div className={styles.navItem}>Contact Us</div>
+                        <div className={styles.navItem}>Community</div>
+                    </nav>
+                </aside>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                <a href="mailto:support@sqlens.vercel.app" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{ padding: '32px', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', transition: 'transform 0.2s', cursor: 'pointer' }}>
-                        <Mail size={32} color="var(--text-main)" style={{ marginBottom: '16px' }} />
-                        <h3 style={{ marginBottom: '12px' }}>Email Support</h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Reach out to our engineering team directly for technical inquiries.</p>
-                    </div>
-                </a>
+                {/* Main Content */}
+                <main className={styles.content}>
+                    <header className={styles.hero}>
+                        <div className={styles.badge}>Customer Success</div>
+                        <h1>Help Center.</h1>
+                        <p>
+                            Everything you need to troubleshoot and master SQLens. Can't find what you're looking for?
+                            Reach out to our engineering team.
+                        </p>
+                    </header>
 
-                <a href="https://discord.com" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{ padding: '32px', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center', transition: 'transform 0.2s', cursor: 'pointer' }}>
-                        <MessageSquare size={32} color="var(--text-main)" style={{ marginBottom: '16px' }} />
-                        <h3 style={{ marginBottom: '12px' }}>Community Discord</h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Join our community of DB developers and share your knowledge.</p>
-                    </div>
-                </a>
-            </div>
+                    {/* Section: FAQ */}
+                    <section className={styles.section}>
+                        <h2><HelpCircle size={28} color="var(--brand-pink)" /> Frequently Asked Questions</h2>
 
-            <div style={{ marginTop: '48px', padding: '32px', background: 'var(--bg-header)', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                <h3 style={{ marginBottom: '24px', fontSize: '1.4rem' }}>Frequently Asked Questions</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div>
-                        <strong style={{ display: 'block', marginBottom: '8px', color: 'var(--text-main)' }}>Why are my queries taking so long?</strong>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>Use the Workbench and check the 'Explain' tab. SQLens will highlight slow scans and recommend index fixes.</p>
-                    </div>
-                    <div>
-                        <strong style={{ display: 'block', marginBottom: '8px', color: 'var(--text-main)' }}>Is my data secure?</strong>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>Yes, every account is provisioned a completely isolated database schema. User A cannot access User B's tables.</p>
-                    </div>
-                </div>
+                        <div className={styles.featureGrid}>
+                            <div className={styles.card}>
+                                <h3>Is my data safe?</h3>
+                                <p>Yes. Every user operates in a strictly isolated PostgreSQL schema. Your queries and data never touch other tenants.</p>
+                            </div>
+                            <div className={styles.card}>
+                                <h3>Can I connect my own DB?</h3>
+                                <p>Currently, SQLens provides managed sandboxes. External database node connection is available in the Enterprise tier.</p>
+                            </div>
+                            <div className={styles.card}>
+                                <h3>How does the AI work?</h3>
+                                <p>We use Gemini 1.5 Flash to analyze the JSON execution plans generated by your queries, correlating them with best practices.</p>
+                            </div>
+                            <div className={styles.card}>
+                                <h3>What is the query limit?</h3>
+                                <p>Free tier users can execute up to 500 queries per day. For higher limits, contact our sales team.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Section: Contact */}
+                    <section className={styles.section}>
+                        <h2><LifeBuoy size={28} color="#00E4FF" /> Direct Support</h2>
+                        <div className={styles.infoBox}>
+                            <MessageCircle size={20} />
+                            <div>
+                                Our engineers are available for live architectural reviews for all Pro and Enterprise customers.
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '16px', marginTop: '32px' }}>
+                            <a href="mailto:support@sqlens.com" className={styles.card} style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}>
+                                <Mail size={24} style={{ margin: '0 auto 12px' }} />
+                                <h3>Email Support</h3>
+                                <p>24h response time</p>
+                            </a>
+                            <a href="https://linkedin.com/in/chaheltanna" className={styles.card} style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}>
+                                <Users size={24} style={{ margin: '0 auto 12px' }} />
+                                <h3>LinkedIn</h3>
+                                <p>Professional network</p>
+                            </a>
+                            <a href="https://github.com/sqlens" className={styles.card} style={{ flex: 1, textDecoration: 'none', textAlign: 'center' }}>
+                                <Code2 size={24} style={{ margin: '0 auto 12px' }} />
+                                <h3>GitHub</h3>
+                                <p>Issue tracking</p>
+                            </a>
+                        </div>
+                    </section>
+
+                    <footer style={{ padding: '60px 0', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                            &copy; 2026 SQLens Help & Support.
+                        </p>
+                    </footer>
+                </main>
             </div>
         </div>
     );

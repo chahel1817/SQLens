@@ -8,7 +8,8 @@ import {
     ArrowRight,
     Check,
     Sparkles,
-    Loader2
+    Loader2,
+    Zap
 } from 'lucide-react';
 import styles from '../app/page.module.css';
 import { AiResult, Suggestion } from './types';
@@ -44,8 +45,14 @@ const InsightPanel: React.FC<InsightPanelProps> = ({
                             <>
                                 <p>{s.improvement}</p>
                                 {s.fix && (
-                                    <button className={styles.suggestAction} onClick={() => applyFix(s.fix!)}>
-                                        Apply Performance Fix <ArrowRight size={14} />
+                                    <button
+                                        className={styles.suggestAction}
+                                        onClick={() => applyFix(s.fix!)}
+                                        style={{ border: '1px solid var(--brand-pink)' }}
+                                    >
+                                        <Zap size={14} style={{ fill: 'currentColor' }} />
+                                        {/CREATE|ALTER|INDEX/i.test(s.fix) ? 'Auto-Execute Index Fix' : 'Auto-Rewrite Query'}
+                                        <ArrowRight size={14} />
                                     </button>
                                 )}
                             </>
@@ -80,7 +87,19 @@ const InsightPanel: React.FC<InsightPanelProps> = ({
                         <div key={i} className={styles.aiTip}>
                             <strong>{tip.title}</strong>
                             <p>{tip.detail}</p>
-                            {tip.fix && <pre className={styles.aiCode}>{tip.fix}</pre>}
+                            {tip.fix && (
+                                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <pre className={styles.aiCode}>{tip.fix}</pre>
+                                    <button
+                                        className={styles.suggestAction}
+                                        onClick={() => applyFix(tip.fix!)}
+                                        style={{ width: 'fit-content', border: '1px solid var(--neon-green)', background: 'rgba(34, 197, 94, 0.05)' }}
+                                    >
+                                        <Zap size={14} style={{ fill: 'currentColor', color: 'var(--neon-green)' }} />
+                                        Apply AI Suggestion
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

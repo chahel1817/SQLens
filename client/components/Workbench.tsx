@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import styles from '../app/page.module.css';
 import { QueryResult } from './types';
+import VisualPlan from './VisualPlan';
 
 interface WorkbenchProps {
     query: string;
@@ -71,6 +72,9 @@ const Workbench: React.FC<WorkbenchProps> = ({
         if (!finalQuery.trim()) return;
         onRun();
     }, [onRun, editorRef, query, setQuery]);
+
+    const [showFullHistory, setShowFullHistory] = React.useState(false);
+    const displayedHistory = showFullHistory ? history : history.slice(0, 3);
 
     return (
         <div className={styles.workspaceLayout}>
@@ -220,9 +224,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
                         {activeResultTab === 'plan' && (
                             <div className={styles.planView}>
                                 {result?.explainPlan ? (
-                                    <pre className={styles.jsonPlan}>
-                                        {JSON.stringify(result.explainPlan, null, 2)}
-                                    </pre>
+                                    <VisualPlan plan={result.explainPlan} />
                                 ) : (
                                     <div className={styles.emptyStateContainer}>
                                         <p>No execution plan available for this query.</p>
@@ -241,11 +243,20 @@ const Workbench: React.FC<WorkbenchProps> = ({
                 <div className={styles.sideCard}>
                     <h4 className={styles.sideTitle}><History size={14} /> Recent Queries</h4>
                     <div className={styles.historyList}>
-                        {history.length > 0 ? history.map((h, i) => (
+                        {displayedHistory.length > 0 ? displayedHistory.map((h, i) => (
                             <button key={i} className={styles.historyItem} onClick={() => loadTemplate(h)}>
                                 <span className={styles.historyText}>{h}</span>
                             </button>
                         )) : <p style={{ opacity: 0.5, fontSize: '0.8rem' }}>No history yet.</p>}
+
+                        {history.length > 3 && (
+                            <button
+                                className={styles.viewMoreBtn}
+                                onClick={() => setShowFullHistory(!showFullHistory)}
+                            >
+                                {showFullHistory ? 'View Less' : `View More (${history.length - 3} more)`}
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className={styles.sideCard}>

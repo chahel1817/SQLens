@@ -800,6 +800,307 @@
 .tabActive {
   color: var(--brand-pink);
   border-bottom-color: var(--brand-pink);
+  background: rgba(255, 61, 119, 0.04);
+}
+
+.planView {
+  padding: 12px;
+  background: var(--bg-card);
+  min-height: 500px;
+}
+
+/* ═══════════ VISUAL PLAN (PREMIUM) ═══════════ */
+.visualPlanContainer {
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.visualPlanHeader {
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.headerTitle h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.visualPlanHeader p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.headerStats {
+  display: flex;
+  gap: 12px;
+}
+
+.headerStatBox {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.headerStatBox span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.headerStatBox strong {
+  font-size: 1rem;
+  color: var(--brand-pink);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.planTreeScroll {
+  flex: 1;
+  overflow: auto;
+  padding: 30px;
+  background-image:
+    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.03) 1px, transparent 0);
+  background-size: 32px 32px;
+}
+
+.planTree {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  min-width: fit-content;
+}
+
+.planNodeWrapper {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.nodeConnector {
+  position: absolute;
+  left: -18px;
+  top: 24px;
+  width: 18px;
+  height: 2px;
+  background: var(--border);
+  opacity: 0.6;
+}
+
+.planNodeWrapper::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: -12px;
+  width: 2px;
+  height: 38px;
+  background: var(--border);
+  opacity: 0.6;
+}
+
+.planNodeWrapper:first-child::before {
+  height: 0;
+}
+
+.planNode {
+  background: rgba(23, 23, 26, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  min-width: 380px;
+  max-width: 460px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 2;
+}
+
+.planNode:hover {
+  transform: translateX(6px);
+  border-color: var(--brand-pink);
+  box-shadow: 0 8px 30px rgba(255, 61, 119, 0.15);
+}
+
+.nodeHeader {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nodeExpander {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.nodeIcon {
+  color: #fff;
+  background: var(--gradient-brand);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(255, 61, 119, 0.3);
+}
+
+.nodeContent {
+  flex: 1;
+}
+
+.nodeTypeLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nodeType {
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--text-main);
+  letter-spacing: -0.2px;
+}
+
+.parallelBadge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.nodeRelation {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.nodePercentageBadge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 100px;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+/* Impact Bar */
+.nodeImpactBar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  width: 100%;
+}
+
+.impactFill {
+  height: 100%;
+  transition: width 1s ease-out;
+}
+
+/* Stats Grid */
+.nodeGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.gridItem {
+  background: rgba(23, 23, 26, 0.4);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gridLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.4px;
+}
+
+.gridValue {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Metadata */
+.nodeMeta {
+  padding: 8px 16px;
+  font-size: 0.72rem;
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.05);
+  border-top: 1px solid rgba(239, 68, 68, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.indexInfo {
+  color: var(--neon-green);
+  background: rgba(34, 197, 94, 0.05);
+  border-top: 1px solid rgba(34, 197, 94, 0.1);
+}
+
+.nodeDefault {
+  border-left: 2px solid var(--border);
+}
+
+.nodeWarning {
+  border-left: 2px solid #F59E0B;
+}
+
+.nodeCritical {
+  border-left: 2px solid var(--neon-pink);
+}
+
+.childPlans {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-left: 2px solid var(--border);
+  padding-left: 14px;
+  margin-left: 23px;
 }
 
 .tabBadge {
@@ -1529,6 +1830,25 @@
   border-color: var(--brand-accent);
   background: var(--bg-card);
   transform: translateX(4px);
+}
+
+.viewMoreBtn {
+  width: 100%;
+  padding: 6px;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--brand-pink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.2s;
+}
+
+.viewMoreBtn:hover {
+  background: rgba(255, 61, 119, 0.05);
+  border-color: var(--brand-pink);
 }
 
 .templateIcon {
