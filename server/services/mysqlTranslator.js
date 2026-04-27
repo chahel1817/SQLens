@@ -1,14 +1,10 @@
-/**
- * MySQL → PostgreSQL Translator
- * 
- * Translates common MySQL syntax into PostgreSQL equivalents
- * so users can write MySQL queries that execute on a PostgreSQL backend.
- */
+const { Parser } = require('node-sql-parser');
 
 class MySQLTranslator {
     constructor(userSchema) {
         this.userSchema = userSchema;       // e.g. "user_5"
         this.activeDb = userSchema;         // current "USE" target
+        this.parser = new Parser();
     }
 
     /**
@@ -90,8 +86,23 @@ class MySQLTranslator {
             };
         }
 
-        // ── Standard SQL → translate MySQL-specific syntax ──
-        let pgQuery = this.translateSyntax(trimmed);
+        // ── Robust Parsing for Standard SQL ──
+        let pgQuery;
+        try {
+            // Use node-sql-parser for structural integrity (CTEs, subqueries, complex joins)
+            const ast = this.parser.astify(trimmed, { database: 'MySQL' });
+
+            // Re-stringify as PostgreSQL
+            pgQuery = this.parser.sqlify(ast, { database: 'PostgreSQL' });
+
+            // Final pass: apply regex-based fixes for types and nuances that the parser 
+            // might not automatically translate between dialects
+            pgQuery = this.translateSyntax(pgQuery);
+        } catch (err) {
+            // Fallback to legacy regex-only translation if parsing fails
+            console.warn('SQL Parser failed, falling back to regex:', err.message);
+            pgQuery = this.translateSyntax(trimmed);
+        }
 
         return { isMeta: false, pgQuery };
     }
@@ -153,23 +164,18 @@ class MySQLTranslator {
         // MySQL UNSIGNED → remove (PostgreSQL doesn't support UNSIGNED)
         q = q.replace(/\bUNSIGNED/gi, '');
 
-        // MySQL IF NOT EXISTS for CREATE TABLE (PG supports this natively)
-        // No change needed
-
         // MySQL MODIFY COLUMN → ALTER COLUMN ... TYPE
         q = q.replace(/\bMODIFY\s+COLUMN/gi, 'ALTER COLUMN');
 
         // MySQL LIMIT x, y → LIMIT y OFFSET x
+        // The parser output might still have x, y if it didn't translate perfectly
         const limitMatch = q.match(/LIMIT\s+(\d+)\s*,\s*(\d+)/i);
         if (limitMatch) {
             q = q.replace(/LIMIT\s+\d+\s*,\s*\d+/i, `LIMIT ${limitMatch[2]} OFFSET ${limitMatch[1]}`);
         }
 
-        // MySQL NOW() works in PG too — no change needed
         // MySQL IFNULL → COALESCE
         q = q.replace(/\bIFNULL\s*\(/gi, 'COALESCE(');
-
-        // MySQL TRUNCATE TABLE → same in PG
 
         return q;
     }

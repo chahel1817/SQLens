@@ -34,7 +34,10 @@ exports.runQuery = async (req, res) => {
 
             return res.json({
                 message: translated.message || 'Command executed',
-                results: [{ Status: translated.message || 'OK' }],
+                results: [{
+                    Status: 'Success',
+                    Message: translated.message || 'Command executed successfully'
+                }],
                 rowCount: 0,
                 executionTime: '0s',
                 explainPlan: null,
@@ -58,7 +61,11 @@ exports.runQuery = async (req, res) => {
 
             return res.json({
                 message: 'Query executed successfully',
-                results: [{ Status: 'OK', Info: `Executed: ${query.trim().split(/\s+/).slice(0, 3).join(' ')}` }],
+                results: [{
+                    Status: 'Success',
+                    Message: `${result.command || 'Query'} executed successfully.`,
+                    Operation: query.trim().split(/\s+/).slice(0, 3).join(' ')
+                }],
                 rowCount: result.rowCount || 0,
                 executionTime: `${executionTime}s`,
                 explainPlan: null,
@@ -77,8 +84,10 @@ exports.runQuery = async (req, res) => {
         let explainPlan = null;
         let planSuggestions = [];
 
-        // 6. EXPLAIN only for SELECTs
-        if (query.trim().toLowerCase().startsWith('select')) {
+        // 6. EXPLAIN for SELECTs, WITH (CTEs), and mutations
+        const isExplainable = /^\s*(SELECT|WITH|INSERT|UPDATE|DELETE)/i.test(query);
+
+        if (isExplainable) {
             try {
                 const explainResult = await client.query(`EXPLAIN (FORMAT JSON, ANALYZE) ${translated.pgQuery}`);
                 explainPlan = explainResult.rows[0]['QUERY PLAN'];
@@ -100,9 +109,19 @@ exports.runQuery = async (req, res) => {
 
         await client.query('COMMIT');
 
+        // Better results for non-SELECTs
+        let finalResults = result.rows || [];
+        if (finalResults.length === 0 && (result.rowCount !== null || result.command)) {
+            const command = result.command || 'Query';
+            finalResults = [{
+                Status: 'Success',
+                Message: `${command} executed successfully. ${result.rowCount !== null ? `${result.rowCount} rows affected.` : ''}`
+            }];
+        }
+
         res.json({
             message: 'Query executed successfully',
-            results: result.rows || [],
+            results: finalResults,
             rowCount: result.rowCount,
             executionTime: `${executionTime}s`,
             explainPlan: explainPlan,
