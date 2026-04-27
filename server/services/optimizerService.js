@@ -225,12 +225,13 @@ exports.analyzePlan = (plan) => {
  * Sends the query + execution plan to an LLM for deep, contextual optimization advice.
  */
 exports.aiAnalyze = async (rawQuery, explainPlan, ruleSuggestions) => {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-        return { error: 'OpenRouter API key not configured' };
-    }
+    try {
+        const apiKey = process.env.OPENROUTER_API_KEY;
+        if (!apiKey) {
+            return { error: 'OpenRouter API key not configured' };
+        }
 
-    const systemPrompt = `You are SQLens AI — an expert MySQL query optimizer. 
+        const systemPrompt = `You are SQLens AI — an expert MySQL query optimizer. 
 You receive a MySQL query, its execution plan, and some rule-based suggestions.
 
 Your job:
@@ -240,17 +241,19 @@ Your job:
 4. Be concise — max 2-3 sentences per tip
 5. Use MySQL syntax in any SQL you write (not PostgreSQL)
 
-Respond in this JSON format:
+IMPORTANT: You MUST respond ONLY with a valid JSON object. No markdown formatting, no preamble.
+
+Expected JSON format:
 {
   "rating": "GOOD",
-  "summary": "One-line summary of the query quality",
+  "summary": "One-line summary",
   "tips": [
-    { "title": "Short title", "detail": "Explanation", "fix": "SQL code if applicable" }
+    { "title": "Title", "detail": "Explanation", "fix": "SQL code" }
   ],
-  "optimizedQuery": "The rewritten query if applicable, or null"
+  "optimizedQuery": "SQL or null"
 }`;
 
-    const userPrompt = `
+        const userPrompt = `
 MySQL Query:
 \`\`\`sql
 ${rawQuery}
@@ -258,48 +261,95 @@ ${rawQuery}
 
 ${explainPlan ? `Execution Plan:\n\`\`\`json\n${JSON.stringify(explainPlan, null, 2)}\n\`\`\`` : 'No execution plan available (non-SELECT query).'}
 
-Rule-based issues found: ${ruleSuggestions.length > 0 ? ruleSuggestions.map(s => s.message).join(', ') : 'None'}
+Rule-based issues found: ${Array.isArray(ruleSuggestions) ? ruleSuggestions.map(s => s.message).join(', ') : 'None'}
 `;
 
-    try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:3000',
-                'X-Title': 'SQLens Query Optimizer'
-            },
-            body: JSON.stringify({
-                model: 'google/gemini-2.0-flash-001',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: 0.3,
-                max_tokens: 800
-            })
-        });
+        // Add a 30-second timeout to the request
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 35000);
 
-        const data = await response.json();
+        let response;
+        let attempts = 0;
+        const maxAttempts = 3;
+        const baseDelay = 2000; // 2 seconds
+
+        while (attempts < maxAttempts) {
+            response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'http://localhost:3000',
+                    'X-Title': 'SQLens Query Optimizer'
+                },
+                body: JSON.stringify({
+                    model: 'google/gemini-2.0-flash-001',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 1500
+                }),
+                signal: controller.signal
+            });
+
+            if (response.status === 429) {
+                attempts++;
+                if (attempts < maxAttempts) {
+                    const delay = baseDelay * Math.pow(2, attempts - 1);
+                    console.warn(`AI Rate Limited (429). Retrying in ${delay}ms... (Attempt ${attempts}/${maxAttempts})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+            }
+            break;
+        }
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
-            console.error('OpenRouter error:', data);
-            return { error: 'AI analysis failed' };
+            const errorData = await response.json().catch(() => ({}));
+            console.error('OpenRouter API error:', response.status, errorData);
+
+            if (response.status === 429) {
+                return { error: "AI Engine is busy (Rate Limit). Please wait a few seconds and try again." };
+            }
+            return { error: `AI service returned ${response.status}: ${errorData.error?.message || 'Unknown error'}` };
         }
 
+        const data = await response.json();
         const content = data.choices?.[0]?.message?.content;
-        if (!content) return { error: 'Empty AI response' };
 
-        // Parse the JSON from the AI response
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+        if (!content) {
+            return { error: 'Empty response from AI engine' };
         }
 
-        return { error: 'Could not parse AI response', raw: content };
+        // Robust JSON extraction
+        try {
+            // First try direct parse (if AI followed instructions perfectly)
+            return JSON.parse(content.trim());
+        } catch (e) {
+            // If that fails, look for the first { and last }
+            const start = content.indexOf('{');
+            const end = content.lastIndexOf('}');
+            if (start !== -1 && end !== -1) {
+                try {
+                    const jsonStr = content.substring(start, end + 1);
+                    return JSON.parse(jsonStr);
+                } catch (innerE) {
+                    console.error('Failed to parse extracted JSON:', innerE.message, content);
+                    return { error: 'AI returned malformed data', raw: content.substring(0, 200) };
+                }
+            }
+            return { error: 'AI response did not contain a valid analysis block', raw: content.substring(0, 200) };
+        }
+
     } catch (err) {
-        console.error('AI Analysis Error:', err.message);
-        return { error: err.message };
+        if (err.name === 'AbortError') {
+            return { error: 'AI analysis timed out. Please try again.' };
+        }
+        console.error('AI Analysis Exception:', err);
+        return { error: `Internal Engine Error: ${err.message}` };
     }
 };

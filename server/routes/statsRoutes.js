@@ -60,7 +60,7 @@ router.get('/stream', authMiddleware, (req, res) => {
     };
 
     sendUpdates();
-    const intervalId = setInterval(sendUpdates, 3000);
+    const intervalId = setInterval(sendUpdates, 5000);
 
     req.on('close', () => clearInterval(intervalId));
 });

@@ -32,8 +32,10 @@ const init = async () => {
                 execution_time DECIMAL(10,2),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE INDEX IF NOT EXISTS idx_history_user ON query_history(user_id);
+            CREATE INDEX IF NOT EXISTS idx_history_time ON query_history(created_at);
         `);
-        console.log("✅ 'query_history' table is ready.");
+        console.log("✅ 'query_history' table and indexes are ready.");
 
         console.log("🚀 SUCCESS! Your database is completely set up and ready for deployment!");
     } catch (e) {

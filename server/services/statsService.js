@@ -6,16 +6,16 @@ const getDashboardStats = async () => {
         const { rows: qpsRows } = await pgPool.query(`
             SELECT COUNT(*)::numeric / 60.0 AS qps 
             FROM public.query_history 
-            WHERE created_at >= NOW() - INTERVAL '10 minutes'
+            WHERE created_at >= NOW() - INTERVAL '1 minute'
         `);
         let qps = parseFloat(qpsRows[0].qps).toFixed(2);
         if (qps === "0.00") qps = "0.05"; // Show minimal activity to be realistic
 
-        // Slow queries: Any query taking more than 5ms (we use a low threshold to show data!)
+        // Slow queries: Any query taking more than 250ms (Professional threshold for 'Delayed' lag)
         const { rows: slowRows } = await pgPool.query(`
             SELECT COUNT(*) AS slow 
             FROM public.query_history 
-            WHERE execution_time > 0.05 AND created_at >= CURRENT_DATE
+            WHERE execution_time > 0.25 AND created_at >= NOW() - INTERVAL '24 hours'
         `);
         const slowQueries = slowRows[0].slow;
 
@@ -26,14 +26,20 @@ const getDashboardStats = async () => {
         `);
         const connections = activeRows[0].active || 1;
 
-        // Uptime (PostgreSQL server uptime)
-        const { rows: uptimeRows } = await pgPool.query(`
-            SELECT EXTRACT(EPOCH FROM (NOW() - pg_postmaster_start_time()))::integer AS uptime
+        // Server Uptime (Time since the Node.js backend started)
+        const uptime = Math.floor(process.uptime());
+
+        // p95 latency calculation for the last minute
+        const { rows: latencyRows } = await pgPool.query(`
+            SELECT PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY execution_time) as p95
+            FROM public.query_history
+            WHERE created_at >= NOW() - INTERVAL '1 minute'
         `);
-        const uptime = uptimeRows[0].uptime || 3600;
+        const p95 = (parseFloat(latencyRows[0].p95 || 0) * 1000).toFixed(1);
 
         return {
             qps,
+            p95: p95 + "ms",
             connections: connections.toString(),
             slowQueries: slowQueries.toString(),
             uptime: uptime.toString()
@@ -47,12 +53,12 @@ const getSlowQueries = async () => {
     try {
         const { rows } = await pgPool.query(`
             SELECT 
-                query, 
+                query_text AS query, 
                 ROUND((execution_time * 1000)::numeric, 2) as time,
                 TO_CHAR(created_at, 'HH24:MI:SS') as date
             FROM public.query_history
-            WHERE execution_time > 0.005  -- 5ms threshold to actually capture interesting hotspots
-            ORDER BY execution_time DESC
+            WHERE execution_time > 0.25  -- Synchronized 250ms threshold
+            ORDER BY created_at DESC
             LIMIT 5
         `);
 
@@ -68,7 +74,7 @@ const getUserLogs = async (userId) => {
             SELECT 
                 TO_CHAR(created_at, 'HH24:MI:SS') as time,
                 'Query Execution' as event,
-                LEFT(query, 50) as detail,
+                LEFT(query_text, 50) as detail,
                 CASE WHEN execution_time < 0 THEN 'FAILED' ELSE 'SUCCESS' END as status
             FROM public.query_history 
             WHERE user_id = $1::integer 
