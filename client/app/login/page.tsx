@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,23 +9,28 @@ import styles from '../auth.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+function persistSession(token: string, user?: unknown) {
+    localStorage.setItem('sqlens_token', token);
+    if (user) {
+        localStorage.setItem('sqlens_user', JSON.stringify(user));
+    }
+
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `sqlens_token=${encodeURIComponent(token)}; Path=/; SameSite=Lax; Max-Age=86400${secure}`;
+}
+
 function LoginContent() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
     const router = useRouter();
     const searchParams = useSearchParams();
+    const successMsg = searchParams.get('message');
 
     const emailValid = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), [email]);
-
-    useEffect(() => {
-        const msg = searchParams.get('message');
-        if (msg) setSuccessMsg(msg);
-    }, [searchParams]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,7 +38,6 @@ function LoginContent() {
 
         setIsLoading(true);
         setError(null);
-        setSuccessMsg(null);
 
         try {
             const res = await fetch(`${API_URL}/api/auth/login`, {
@@ -44,11 +48,11 @@ function LoginContent() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Invalid email or password');
 
-            localStorage.setItem('sqlens_token', data.token);
-            router.push('/');
+            persistSession(data.token, data.user);
+            router.push('/dashboard');
             router.refresh();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unable to sign in');
         } finally {
             setIsLoading(false);
         }

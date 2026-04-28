@@ -224,12 +224,82 @@ exports.analyzePlan = (plan) => {
 /**
  * Sends the query + execution plan to an LLM for deep, contextual optimization advice.
  */
-exports.aiAnalyze = async (rawQuery, explainPlan, ruleSuggestions) => {
+const buildFallbackAnalysis = (rawQuery, explainPlan, ruleSuggestions, reason) => {
+    const tips = [];
+    const normalizedSuggestions = Array.isArray(ruleSuggestions) ? ruleSuggestions : [];
+    const seenTitles = new Set();
+
+    for (const suggestion of normalizedSuggestions) {
+        if (tips.length >= 4) break;
+
+        const title = suggestion.message || 'Optimization opportunity';
+        if (seenTitles.has(title)) continue;
+
+        seenTitles.add(title);
+        tips.push({
+            title,
+            detail: suggestion.improvement || 'Review this area to improve query performance.',
+            fix: suggestion.fix
+        });
+    }
+
+    const planNode = explainPlan?.[0]?.Plan;
+    if (planNode?.['Node Type'] === 'Seq Scan' && tips.length < 4) {
+        tips.push({
+            title: `Review full scan on ${planNode['Relation Name'] || 'target table'}`,
+            detail: 'The execution plan shows a sequential scan. Add an index on the filtered or joined columns to reduce scanned rows.'
+        });
+    }
+
+    if (/SELECT\s+\*/i.test(rawQuery) && tips.length < 4 && !seenTitles.has('Avoid using SELECT * in production')) {
+        tips.push({
+            title: 'Select only required columns',
+            detail: 'Replacing SELECT * with explicit columns reduces transferred data and makes index-only plans more likely.'
+        });
+    }
+
+    if (tips.length === 0) {
+        tips.push({
+            title: 'Review filters and indexes',
+            detail: 'No rule-based issues were found, so focus on WHERE, JOIN, and ORDER BY columns and confirm they are covered by appropriate indexes.'
+        });
+    }
+
+    const criticalCount = normalizedSuggestions.filter(item => item.type === 'CRITICAL').length;
+    const warningCount = normalizedSuggestions.filter(item => item.type === 'WARNING').length;
+    const rating = criticalCount > 0
+        ? 'POOR'
+        : warningCount > 1
+            ? 'NEEDS IMPROVEMENT'
+            : warningCount === 1
+                ? 'GOOD'
+                : 'EXCELLENT';
+
+    const summaryPrefix = reason
+        ? `${reason} Returning SQLens fallback analysis.`
+        : 'Returning SQLens fallback analysis.';
+
+    return {
+        rating,
+        summary: `${summaryPrefix} Found ${normalizedSuggestions.length} rule-based optimization signal${normalizedSuggestions.length === 1 ? '' : 's'} for this query.`,
+        tips,
+        optimizedQuery: normalizedSuggestions.find(item => item.fix)?.fix || null
+    };
+};
+
+exports.aiAnalyze = async (rawQuery, explainPlan, ruleSuggestions, options = {}) => {
     try {
         const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey) {
-            return { error: 'OpenRouter API key not configured' };
+            return buildFallbackAnalysis(rawQuery, explainPlan, ruleSuggestions, 'OpenRouter API key is not configured.');
         }
+
+        const siteUrl = options.siteUrl || process.env.OPENROUTER_SITE_URL || process.env.APP_URL || 'http://localhost:3000';
+        const models = [
+            process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-001',
+            'openai/gpt-4o-mini',
+            'meta-llama/llama-3.3-70b-instruct'
+        ].filter((model, index, arr) => arr.indexOf(model) === index);
 
         const systemPrompt = `You are SQLens AI — an expert MySQL query optimizer. 
 You receive a MySQL query, its execution plan, and some rule-based suggestions.
@@ -264,65 +334,89 @@ ${explainPlan ? `Execution Plan:\n\`\`\`json\n${JSON.stringify(explainPlan, null
 Rule-based issues found: ${Array.isArray(ruleSuggestions) ? ruleSuggestions.map(s => s.message).join(', ') : 'None'}
 `;
 
-        // Add a 30-second timeout to the request
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 35000);
-
         let response;
-        let attempts = 0;
-        const maxAttempts = 3;
-        const baseDelay = 2000; // 2 seconds
+        let lastErrorMessage = '';
 
-        while (attempts < maxAttempts) {
-            response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'http://localhost:3000',
-                    'X-Title': 'SQLens Query Optimizer'
-                },
-                body: JSON.stringify({
-                    model: 'google/gemini-2.0-flash-001',
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt }
-                    ],
-                    temperature: 0.1,
-                    max_tokens: 1500
-                }),
-                signal: controller.signal
-            });
+        for (const model of models) {
+            let attempts = 0;
+            const maxAttempts = 2;
+            const baseDelay = 1500;
 
-            if (response.status === 429) {
-                attempts++;
-                if (attempts < maxAttempts) {
-                    const delay = baseDelay * Math.pow(2, attempts - 1);
-                    console.warn(`AI Rate Limited (429). Retrying in ${delay}ms... (Attempt ${attempts}/${maxAttempts})`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    continue;
+            while (attempts < maxAttempts) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                try {
+                    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json',
+                            'HTTP-Referer': siteUrl,
+                            'X-Title': 'SQLens Query Optimizer'
+                        },
+                        body: JSON.stringify({
+                            model,
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userPrompt }
+                            ],
+                            temperature: 0.1,
+                            max_tokens: 1500
+                        }),
+                        signal: controller.signal
+                    });
+                } catch (requestError) {
+                    clearTimeout(timeoutId);
+                    if (requestError.name === 'AbortError') {
+                        lastErrorMessage = 'AI analysis timed out.';
+                        break;
+                    }
+                    throw requestError;
                 }
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    break;
+                }
+
+                const errorData = await response.json().catch(() => ({}));
+                lastErrorMessage = errorData.error?.message || `Provider returned ${response.status}.`;
+                console.error('OpenRouter API error:', response.status, errorData);
+
+                if (response.status === 429) {
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        const delay = baseDelay * Math.pow(2, attempts - 1);
+                        console.warn(`AI Rate Limited (429) on ${model}. Retrying in ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                }
+
+                break;
             }
-            break;
+
+            if (response?.ok) {
+                break;
+            }
         }
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('OpenRouter API error:', response.status, errorData);
-
-            if (response.status === 429) {
-                return { error: "AI Engine is busy (Rate Limit). Please wait a few seconds and try again." };
-            }
-            return { error: `AI service returned ${response.status}: ${errorData.error?.message || 'Unknown error'}` };
+        if (!response?.ok) {
+            return buildFallbackAnalysis(
+                rawQuery,
+                explainPlan,
+                ruleSuggestions,
+                lastErrorMessage || 'The AI provider is temporarily unavailable.'
+            );
         }
 
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content;
 
         if (!content) {
-            return { error: 'Empty response from AI engine' };
+            return buildFallbackAnalysis(rawQuery, explainPlan, ruleSuggestions, 'The AI provider returned an empty response.');
         }
 
         // Robust JSON extraction
@@ -339,17 +433,17 @@ Rule-based issues found: ${Array.isArray(ruleSuggestions) ? ruleSuggestions.map(
                     return JSON.parse(jsonStr);
                 } catch (innerE) {
                     console.error('Failed to parse extracted JSON:', innerE.message, content);
-                    return { error: 'AI returned malformed data', raw: content.substring(0, 200) };
+                    return buildFallbackAnalysis(rawQuery, explainPlan, ruleSuggestions, 'The AI provider returned malformed data.');
                 }
             }
-            return { error: 'AI response did not contain a valid analysis block', raw: content.substring(0, 200) };
+            return buildFallbackAnalysis(rawQuery, explainPlan, ruleSuggestions, 'The AI response did not contain a valid analysis block.');
         }
 
     } catch (err) {
         if (err.name === 'AbortError') {
-            return { error: 'AI analysis timed out. Please try again.' };
+            return buildFallbackAnalysis(rawQuery, explainPlan, ruleSuggestions, 'AI analysis timed out.');
         }
         console.error('AI Analysis Exception:', err);
-        return { error: `Internal Engine Error: ${err.message}` };
+        return buildFallbackAnalysis(rawQuery, explainPlan, ruleSuggestions, `Internal engine error: ${err.message}`);
     }
 };

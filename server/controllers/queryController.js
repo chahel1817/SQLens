@@ -161,7 +161,14 @@ exports.aiOptimize = async (req, res) => {
     }
 
     try {
-        const aiResult = await optimizer.aiAnalyze(query, explainPlan, suggestions || []);
+        const forwardedProto = req.headers['x-forwarded-proto'];
+        const forwardedHost = req.headers['x-forwarded-host'] || req.get('host');
+        const siteUrl = req.get('origin')
+            || (forwardedHost ? `${forwardedProto || req.protocol}://${forwardedHost}` : undefined);
+
+        const aiResult = await optimizer.aiAnalyze(query, explainPlan, suggestions || [], {
+            siteUrl
+        });
 
         // If the service returned an internal error object, we still return 200
         // but the frontend will display the error message nicely.
