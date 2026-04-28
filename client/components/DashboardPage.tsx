@@ -104,22 +104,19 @@ function clearClientSession() {
 }
 
 export default function DashboardPage() {
-  const [query, setQuery] = useState(() => getStoredValue('sqlens_query') || 'SHOW TABLES;');
+  const [query, setQuery] = useState('SHOW TABLES;');
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeResultTab, setActiveResultTab] = useState<ResultTab>('results');
-  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
-    const savedTab = getStoredValue('sqlens_tab');
-    return savedTab === 'queries' || savedTab === 'performance' || savedTab === 'logs' ? savedTab : 'dashboard';
-  });
+  const [activeTab, setActiveTab] = useState<DashboardTab>('dashboard');
 
-  const [result, setResult] = useState<QueryResult | null>(() => parseStoredJson<QueryResult | null>(getStoredValue('sqlens_result'), null));
+  const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>(() => parseStoredJson<string[]>(getStoredValue('sqlens_history'), []));
-  const [token] = useState<string | null>(() => (typeof window === 'undefined' ? null : localStorage.getItem('sqlens_token')));
+  const [history, setHistory] = useState<string[]>([]);
+  const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [theme, setTheme] = useState(getStoredTheme);
+  const [theme, setTheme] = useState('one-dark');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
 
   const [dbStats, setDbStats] = useState<DbStats | null>(null);
@@ -132,6 +129,29 @@ export default function DashboardPage() {
   const editorRef = useRef<MonacoEditor | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // Load persistent state from storage after mounting
+  useEffect(() => {
+    const savedQuery = sessionStorage.getItem('sqlens_query');
+    if (savedQuery) setQuery(savedQuery);
+
+    const savedTab = sessionStorage.getItem('sqlens_tab');
+    if (savedTab === 'queries' || savedTab === 'performance' || savedTab === 'logs' || savedTab === 'dashboard') {
+      setActiveTab(savedTab as DashboardTab);
+    }
+
+    const savedResult = sessionStorage.getItem('sqlens_result');
+    if (savedResult) setResult(parseStoredJson<QueryResult | null>(savedResult, null));
+
+    const savedHistory = sessionStorage.getItem('sqlens_history');
+    if (savedHistory) setHistory(parseStoredJson<string[]>(savedHistory, []));
+
+    const savedToken = localStorage.getItem('sqlens_token');
+    if (savedToken) setToken(savedToken);
+
+    const savedTheme = localStorage.getItem('sqlens_theme');
+    if (savedTheme) setTheme(savedTheme);
+  }, []);
   const fetchStats = useCallback(async (activeToken: string) => {
     try {
       const authHeader = { Authorization: `Bearer ${activeToken}` };
