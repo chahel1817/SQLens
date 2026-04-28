@@ -1450,10 +1450,18 @@
 
 .statusOk {
   color: #16A34A;
+  background: rgba(22, 163, 74, 0.1);
 }
 
 .statusFail {
   color: #DC2626;
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.statusSlow,
+.statusWarn {
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.1);
 }
 
 /* ═══════════ FOOTER ═══════════ */

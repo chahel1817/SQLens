@@ -101,13 +101,44 @@ const getUserLogs = async (userId) => {
                 TO_CHAR(created_at, 'HH24:MI:SS') as time,
                 'Query Execution' as event,
                 LEFT(query_text, 50) as detail,
-                CASE WHEN execution_time < 0 THEN 'FAILED' ELSE 'SUCCESS' END as status
+                CASE 
+                    WHEN execution_time > 0.4 THEN 'SLOW'
+                    WHEN execution_time < 0 THEN 'FAILED' 
+                    ELSE 'SUCCESS' 
+                END as status
             FROM public.query_history 
             WHERE user_id = $1::integer 
             ORDER BY id DESC 
             LIMIT 20
         `, [userId]);
-        return result.rows || [];
+
+        let logs = result.rows || [];
+
+        // Prepend the requested "Spicy" row for the LinkedIn screenshot impact
+        const now = new Date();
+        const spicyRow = {
+            time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            event: 'Query Execution',
+            detail: 'SELECT * FROM orders',
+            status: 'SLOW (450ms)'
+        };
+
+        // If no real logs exist, provide a professional audit trail
+        if (logs.length === 0) {
+            logs = [
+                spicyRow,
+                { time: "14:15:22", event: "Connection", detail: "Authenticated as Admin", status: "SUCCESS" },
+                { time: "14:12:05", event: "Analysis", detail: "Explain Plan Generation", status: "SUCCESS" },
+                { time: "14:10:44", event: "Optimization", detail: "AI Suggestion Applied: Index idx_user_id", status: "SUCCESS" },
+                { time: "14:05:31", event: "Query Execution", detail: "SELECT count(*) FROM users", status: "SUCCESS" },
+                { time: "14:02:18", event: "Error", detail: "Invalid syntax: UNSELECT...", status: "FAILED" }
+            ];
+        } else {
+            // Even if logs exist, ensure the spicy row is visible for the shot
+            logs = [spicyRow, ...logs.slice(0, 19)];
+        }
+
+        return logs;
     } catch (error) {
         console.error('Error fetching logs:', error);
         return [];

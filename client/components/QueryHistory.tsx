@@ -26,18 +26,27 @@ const QueryHistory: React.FC<QueryHistoryProps> = ({ userLogs }) => {
                     </tr>
                 </thead>
                 <tbody>
-                    {userLogs.length > 0 ? userLogs.map((log, i) => (
-                        <tr key={i}>
-                            <td style={{ opacity: 0.6 }}>{log.time}</td>
-                            <td style={{ fontWeight: 600 }}>{log.event}</td>
-                            <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.detail}>{log.detail}</td>
-                            <td>
-                                <span className={`${styles.badge} ${log.status === 'SUCCESS' ? styles.statusOk : styles.statusWarn}`}>
-                                    {log.status}
-                                </span>
-                            </td>
-                        </tr>
-                    )) : (
+                    {userLogs.length > 0 ? userLogs.map((log, i) => {
+                        const getStatusClass = (status: string) => {
+                            if (status === 'SUCCESS') return styles.statusOk;
+                            if (status.includes('SLOW')) return styles.statusSlow;
+                            if (status === 'FAILED') return styles.statusFail;
+                            return styles.statusWarn;
+                        };
+
+                        return (
+                            <tr key={i}>
+                                <td style={{ opacity: 0.6 }}>{log.time}</td>
+                                <td style={{ fontWeight: 600 }}>{log.event}</td>
+                                <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.detail}>{log.detail}</td>
+                                <td>
+                                    <span className={`${styles.badge} ${getStatusClass(log.status)}`}>
+                                        {log.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        );
+                    }) : (
                         <tr>
                             <td colSpan={4} style={{ textAlign: 'center', padding: '40px', opacity: 0.5 }}>No logs available yet. Run some queries!</td>
                         </tr>
