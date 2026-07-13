@@ -43,7 +43,7 @@ export default function DocsPage() {
             <div className={styles.docsLayout}>
                 {/* Sidebar */}
                 <aside className={styles.sidebar}>
-                    <Link href="/" className={styles.backLink}>
+                    <Link href="/dashboard" className={styles.backLink}>
                         <ArrowLeft size={16} /> Back to Dashboard
                     </Link>
 
