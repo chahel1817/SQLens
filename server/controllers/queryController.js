@@ -89,7 +89,11 @@ exports.runQuery = async (req, res) => {
 
         if (isExplainable) {
             try {
-                const explainResult = await client.query(`EXPLAIN (FORMAT JSON, ANALYZE) ${translated.pgQuery}`);
+                // Determine if it's a mutation. ANALYZE executes the query, so running it on mutations causes duplicates!
+                const isMutation = /^\s*(INSERT|UPDATE|DELETE)/i.test(query);
+                const explainCommand = isMutation ? 'EXPLAIN (FORMAT JSON)' : 'EXPLAIN (FORMAT JSON, ANALYZE)';
+                
+                const explainResult = await client.query(`${explainCommand} ${translated.pgQuery}`);
                 explainPlan = explainResult.rows[0]['QUERY PLAN'];
                 planSuggestions = optimizer.analyzePlan(explainPlan);
             } catch (explainErr) {
