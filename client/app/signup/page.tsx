@@ -15,6 +15,7 @@ export default function Signup() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isSuccess, setIsSuccess] = useState(false);
     const router = useRouter();
 
     // ── Live validation rules ──
@@ -47,19 +48,11 @@ export default function Signup() {
             const signupData = await signupRes.json();
             if (!signupRes.ok) throw new Error(signupData.message || 'Signup failed');
 
-            // 2. Auto-login immediately
-            const loginRes = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            });
-            const loginData = await loginRes.json();
-            if (!loginRes.ok) throw new Error('Account created but auto-login failed. Please login manually.');
-
-            // 3. Save token and redirect to workspace
-            localStorage.setItem('sqlens_token', loginData.token);
-            router.push('/');
-            router.refresh();
+            // 2. Show success and redirect to login
+            setIsSuccess(true);
+            setTimeout(() => {
+                router.push('/login');
+            }, 3000);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -104,6 +97,18 @@ export default function Signup() {
                         <p className={styles.formSub}>Start analyzing query performance in seconds.</p>
                     </div>
 
+                    {isSuccess ? (
+                        <div className={styles.alertSuccess} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px', gap: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--neon-green)' }}>
+                            <div style={{ background: 'rgba(0, 228, 255, 0.1)', padding: '16px', borderRadius: '50%' }}>
+                                <Check size={40} color="var(--neon-green)" />
+                            </div>
+                            <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.2rem' }}>Account Created!</h3>
+                            <p style={{ color: 'var(--text-muted)', textAlign: 'center', margin: 0, fontSize: '0.9rem' }}>
+                                Your private SQL sandbox is ready. Redirecting to login...
+                            </p>
+                        </div>
+                    ) : (
+                    <>
                     {error && (
                         <div className={styles.alertError}>
                             <AlertCircle size={18} /> {error}
@@ -177,6 +182,8 @@ export default function Signup() {
                         Already have an account?{' '}
                         <Link href="/login" className={styles.link}>Sign in</Link>
                     </div>
+                    </>
+                    )}
                 </div>
             </div>
         </div>

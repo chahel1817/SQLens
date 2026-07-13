@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/dashboard', authMiddleware, async (req, res) => {
     try {
-        const stats = await getDashboardStats();
+        const stats = await getDashboardStats(req.user.id);
         res.json(stats);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch dashboard stats' });
@@ -15,7 +15,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
 
 router.get('/slow-queries', authMiddleware, async (req, res) => {
     try {
-        const slow = await getSlowQueries();
+        const slow = await getSlowQueries(req.user.id);
         res.json(slow);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch slow queries' });
@@ -24,7 +24,7 @@ router.get('/slow-queries', authMiddleware, async (req, res) => {
 
 router.get('/analytics', authMiddleware, async (req, res) => {
     try {
-        const data = await getAnalyticsData();
+        const data = await getAnalyticsData(req.user.id);
         res.json(data);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch analytics' });
@@ -48,9 +48,9 @@ router.get('/stream', authMiddleware, (req, res) => {
     const sendUpdates = async () => {
         try {
             const [dashboard, slow, analytics, logs] = await Promise.all([
-                getDashboardStats(),
-                getSlowQueries(),
-                getAnalyticsData(),
+                getDashboardStats(req.user.id),
+                getSlowQueries(req.user.id),
+                getAnalyticsData(req.user.id),
                 getUserLogs(req.user.id)
             ]);
             res.write(`data: ${JSON.stringify({ dashboard, slow, analytics, logs })}\n\n`);
