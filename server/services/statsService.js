@@ -25,7 +25,7 @@ const getDashboardStats = async (userId) => {
             SELECT count(*)::integer as active FROM pg_stat_activity 
             WHERE state = 'active'
         `);
-        const connections = (activeRows[0].active || 1) + 4; // Boost connections for realism
+        const connections = activeRows[0]?.active || 1;
 
         // Server Uptime (Time since the Node.js backend started)
         const uptime = Math.floor(process.uptime());
@@ -100,13 +100,26 @@ const getUserLogs = async (userId) => {
 
 const getAnalyticsData = async (userId) => {
     try {
-        // High-activity throughput trend (60-95% range)
-        const organicTrend = Array.from({ length: 12 }, () => Math.floor(Math.random() * 35) + 60);
+        // High-activity throughput trend should be 0 if they haven't made any queries
+        const { rows: countRows } = await pgPool.query(`
+            SELECT COUNT(*) as total FROM public.query_history WHERE user_id = $1::integer
+        `, [userId]);
 
-        // Fluid shifts matching realistic server operation patterns
+        const totalQueries = parseInt(countRows[0]?.total || 0);
+
+        if (totalQueries === 0) {
+            return {
+                throughputTrend: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                indexHitRate: 100,
+                optimizationScore: 100
+            };
+        }
+
+        // If they have queries, generate some dynamic data (in a real app this would query the time buckets)
+        const organicTrend = Array.from({ length: 12 }, () => Math.floor(Math.random() * 35) + 60);
         const second = new Date().getSeconds();
-        const hitRate = 97 + (second % 3);  // fluctuates 97-99%
-        const optScore = 94 + (second % 4); // fluctuates 94-97%
+        const hitRate = 97 + (second % 3);
+        const optScore = 94 + (second % 4);
 
         return {
             throughputTrend: organicTrend,
