@@ -378,6 +378,160 @@
     }
 }
 
+/* ═══════════ ENGINE STATUS & WORKSPACE LAUNCH STATE ═══════════ */
+.enginePill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+}
+
+.engineDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.engineDotOnline {
+    background: #22C55E;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.engineDotWaking {
+    background: #F59E0B;
+    animation: pulseAmber 1.2s ease-in-out infinite;
+}
+
+@keyframes pulseAmber {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.45;
+        transform: scale(0.85);
+    }
+}
+
+.launchCard {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.launchHeader {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.launchIconWrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 61, 119, 0.12);
+    color: #FF3D77;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.launchTitle {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.launchSub {
+    margin: 3px 0 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.launchProgressTrack {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.launchProgressBar {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #FF7A18, #FF3D77);
+    transition: width 0.35s ease;
+}
+
+.launchSteps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.launchStep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    transition: color 0.2s;
+}
+
+.launchStepActive {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.launchStepDone {
+    color: #22C55E;
+}
+
+.launchColdNote {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #FBBF24;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.launchTipBox {
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.launchTipLabel {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #FF7A18;
+    margin-bottom: 4px;
+}
+
 /* ═══════════ RESPONSIVE ═══════════ */
 @media (max-width: 900px) {
     .authPage {

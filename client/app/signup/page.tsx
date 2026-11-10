@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -16,7 +16,32 @@ export default function Signup() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const router = useRouter();
+
+    // Pre-warm backend on mount while user fills form
+    useEffect(() => {
+        const controller = new AbortController();
+        fetch(`${API_URL}/`, { method: 'GET', cache: 'no-store', signal: controller.signal }).catch(() => {});
+        return () => controller.abort();
+    }, []);
+
+    useEffect(() => {
+        if (!isLoading) return;
+        const start = Date.now();
+        const timer = window.setInterval(() => {
+            setElapsedSeconds(Math.floor((Date.now() - start) / 1000));
+        }, 500);
+        return () => window.clearInterval(timer);
+    }, [isLoading]);
+
+    useEffect(() => {
+        if (!isSuccess) return;
+        const redirectTimer = window.setTimeout(() => {
+            router.push('/login');
+        }, 3000);
+        return () => window.clearTimeout(redirectTimer);
+    }, [isSuccess, router]);
 
     // ── Live validation rules ──
     const emailValid = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), [email]);
@@ -33,9 +58,10 @@ export default function Signup() {
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formValid) return;
+        if (!formValid || isLoading) return;
 
         setIsLoading(true);
+        setElapsedSeconds(0);
         setError(null);
 
         try {
@@ -45,16 +71,13 @@ export default function Signup() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
-            const signupData = await signupRes.json();
-            if (!signupRes.ok) throw new Error(signupData.message || 'Signup failed');
+            const signupData = await signupRes.json().catch(() => ({}));
+            if (!signupRes.ok) throw new Error(signupData.error || signupData.message || 'Signup failed');
 
-            // 2. Show success and redirect to login
+            // 2. Show success and redirect to login (handled by effect)
             setIsSuccess(true);
-            setTimeout(() => {
-                router.push('/login');
-            }, 3000);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Signup failed');
         } finally {
             setIsLoading(false);
         }
@@ -174,7 +197,11 @@ export default function Signup() {
 
                         <button type="submit" className={styles.submitBtn} disabled={isLoading || !formValid}>
                             {isLoading ? <Loader2 className={styles.spinner} size={20} /> : <UserPlus size={20} />}
-                            {isLoading ? 'Provisioning Sandbox...' : 'Create Account'}
+                            {isLoading
+                                ? elapsedSeconds >= 3
+                                    ? `Waking server & creating sandbox (${elapsedSeconds}s)...`
+                                    : 'Provisioning Sandbox...'
+                                : 'Create Account'}
                         </button>
                     </form>
 
