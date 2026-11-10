@@ -14,10 +14,42 @@ import {
     ChevronRight,
     Cpu,
     HardDrive,
-    TrendingUp
+    TrendingUp,
+    AlertTriangle
 } from 'lucide-react';
 import styles from '../app/page.module.css';
 import { ExplainPlanNode, ExplainPlanWrapper } from './types';
+
+const JOIN_BADGES: Record<string, { label: string; bg: string; color: string; hint: string }> = {
+    'Nested Loop': {
+        label: 'Nested Loop · O(N·M)',
+        bg: 'rgba(245, 158, 11, 0.14)',
+        color: '#F59E0B',
+        hint: 'Iterates outer rows and probes inner rows'
+    },
+    'Hash Join': {
+        label: 'Hash Join · O(N+M)',
+        bg: 'rgba(59, 130, 246, 0.14)',
+        color: '#60A5FA',
+        hint: 'Builds an in-memory hash table and probes rows'
+    },
+    'Merge Join': {
+        label: 'Merge Join · Sorted',
+        bg: 'rgba(168, 85, 247, 0.14)',
+        color: '#C084FC',
+        hint: 'Merges pre-sorted streams in lockstep'
+    }
+};
+
+function computeNodeMisestimation(planRows?: number, actualRows?: number) {
+    if (planRows === undefined || actualRows === undefined) return null;
+    if (planRows < 10 && actualRows < 10) return null;
+    const est = Math.max(planRows, 1);
+    const act = Math.max(actualRows, 1);
+    const ratio = Math.max(est / act, act / est);
+    if (ratio <= 10) return null;
+    return Math.round(ratio * 10) / 10;
+}
 
 interface PlanNodeProps {
     node: ExplainPlanNode;
@@ -40,6 +72,8 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
     const actualTotalTime = node['Actual Total Time'];
     const sharedHit = node['Shared Hit Blocks'] ?? 0;
     const sharedRead = node['Shared Read Blocks'] ?? 0;
+    const joinBadge = JOIN_BADGES[nodeType];
+    const skewRatio = computeNodeMisestimation(planRows, actualRows);
     const children = node.Plans || [];
 
     // Calculate percentages
@@ -85,6 +119,22 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
                         <div className={styles.nodeTypeLine}>
                             <span className={styles.nodeType}>{nodeType}</span>
                             {node['Parallel Aware'] && <span className={styles.parallelBadge}>Parallel</span>}
+                            {joinBadge && (
+                                <span
+                                    title={joinBadge.hint}
+                                    style={{
+                                        fontSize: '0.68rem',
+                                        fontWeight: 700,
+                                        padding: '2px 8px',
+                                        borderRadius: 999,
+                                        background: joinBadge.bg,
+                                        color: joinBadge.color,
+                                        border: `1px solid ${joinBadge.color}40`
+                                    }}
+                                >
+                                    {joinBadge.label}
+                                </span>
+                            )}
                         </div>
                         {relationName && (
                             <div className={styles.nodeRelation}>
@@ -134,6 +184,15 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
                         <HardDrive size={10} />
                         <span>
                             8KB Pages: {sharedHit} hit (RAM) · {sharedRead} read (disk)
+                        </span>
+                    </div>
+                )}
+
+                {skewRatio !== null && (
+                    <div className={styles.nodeMeta} style={{ color: '#F59E0B', background: 'rgba(245, 158, 11, 0.08)', borderTop: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                        <AlertTriangle size={10} />
+                        <span>
+                            Row misestimation ({skewRatio}× skew): planned {planRows} vs actual {actualRows} — stale table stats
                         </span>
                     </div>
                 )}

@@ -144,6 +144,41 @@ exports.analyzeQuery = (rawQuery) => {
 //  LAYER 1B: EXPLAIN PLAN ANALYZER (SELECT only)
 // ═══════════════════════════════════════════════════════
 
+function computeRowMisestimation(node) {
+    if (!node || node['Actual Rows'] === undefined || node['Plan Rows'] === undefined) {
+        return null;
+    }
+
+    const planRows = Number(node['Plan Rows']);
+    const actualRows = Number(node['Actual Rows']);
+    if (planRows < 10 && actualRows < 10) {
+        return null;
+    }
+
+    const est = Math.max(planRows, 1);
+    const act = Math.max(actualRows, 1);
+    const ratio = Math.max(est / act, act / est);
+
+    if (ratio <= 10) {
+        return null;
+    }
+
+    return {
+        nodeType: node['Node Type'],
+        relation: node['Relation Name'] || null,
+        planRows,
+        actualRows,
+        ratio: Math.round(ratio * 10) / 10,
+        direction: actualRows > planRows ? 'underestimated' : 'overestimated',
+    };
+}
+
+const JOIN_STRATEGIES = {
+    'Nested Loop': 'Iterates outer rows and probes inner rows (best for small sets or indexed inner lookups).',
+    'Hash Join': 'Builds an in-memory hash table on the smaller input and probes it in O(N + M) time.',
+    'Merge Join': 'Scans both inputs in sorted order and merges matching keys in O(N log N) or linear time.',
+};
+
 /**
  * Analyzes the PostgreSQL EXPLAIN plan for performance issues.
  */
@@ -209,6 +244,18 @@ exports.analyzePlan = (plan) => {
             });
         }
 
+        // Cost-Based Optimizer >10x cardinality misestimation
+        const skew = computeRowMisestimation(node);
+        if (skew) {
+            const target = skew.relation || skew.nodeType;
+            suggestions.push({
+                type: 'WARNING',
+                message: `Planner cardinality misestimation on "${target}": estimated ${skew.planRows} vs actual ${skew.actualRows} rows (${skew.ratio}x skew)`,
+                improvement: 'PostgreSQL cost-based optimization relies on pg_statistic table histograms. Stale statistics can cause suboptimal join or scan choices — run ANALYZE to refresh them.',
+                fix: skew.relation ? `ANALYZE ${skew.relation};` : undefined
+            });
+        }
+
         if (node.Plans) node.Plans.forEach(traversePlan);
     };
 
@@ -217,7 +264,8 @@ exports.analyzePlan = (plan) => {
 };
 
 /**
- * Extracts buffer pool I/O, scan counts, and timing metrics from EXPLAIN (FORMAT JSON, ANALYZE, BUFFERS).
+ * Extracts buffer pool I/O, scan/join algorithms, row misestimations, and timing metrics
+ * from EXPLAIN (FORMAT JSON, ANALYZE, BUFFERS).
  * Uses the root Plan node for cumulative block counts to avoid double-counting child nodes.
  */
 exports.extractPlanMetrics = (plan) => {
@@ -232,6 +280,9 @@ exports.extractPlanMetrics = (plan) => {
         usedIndex: false,
         seqScanCount: 0,
         indexScanCount: 0,
+        joinAlgorithms: [],
+        scanMethods: [],
+        misestimations: [],
     };
 
     if (!Array.isArray(plan) || !plan[0] || !plan[0].Plan) {
@@ -243,12 +294,39 @@ exports.extractPlanMetrics = (plan) => {
 
     let seqScanCount = 0;
     let indexScanCount = 0;
+    const joinAlgorithms = [];
+    const scanMethods = [];
+    const misestimations = [];
 
     const walk = (node) => {
         if (!node) return;
         const type = node['Node Type'] || '';
         if (type === 'Seq Scan') seqScanCount += 1;
         if (type.includes('Index')) indexScanCount += 1;
+
+        if (JOIN_STRATEGIES[type]) {
+            joinAlgorithms.push({
+                nodeType: type,
+                strategy: JOIN_STRATEGIES[type],
+                cost: node['Total Cost'],
+                actualTimeMs: node['Actual Total Time'] ?? null,
+                rows: node['Actual Rows'] ?? node['Plan Rows'] ?? 0,
+            });
+        }
+
+        if (type.includes('Scan')) {
+            scanMethods.push({
+                nodeType: type,
+                relation: node['Relation Name'] || null,
+                indexName: node['Index Name'] || null,
+                rows: node['Actual Rows'] ?? node['Plan Rows'] ?? 0,
+                cost: node['Total Cost'],
+            });
+        }
+
+        const skew = computeRowMisestimation(node);
+        if (skew) misestimations.push(skew);
+
         if (Array.isArray(node.Plans)) node.Plans.forEach(walk);
     };
 
@@ -271,6 +349,9 @@ exports.extractPlanMetrics = (plan) => {
         usedIndex: indexScanCount > 0,
         seqScanCount,
         indexScanCount,
+        joinAlgorithms,
+        scanMethods,
+        misestimations,
     };
 };
 

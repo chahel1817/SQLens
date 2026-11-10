@@ -38,6 +38,31 @@ export type ExplainPlanWrapper = {
     'Execution Time'?: number;
 };
 
+export type JoinAlgorithmInfo = {
+    nodeType: string;
+    strategy: string;
+    cost: number;
+    actualTimeMs: number | null;
+    rows: number;
+};
+
+export type ScanMethodInfo = {
+    nodeType: string;
+    relation: string | null;
+    indexName: string | null;
+    rows: number;
+    cost: number;
+};
+
+export type RowMisestimation = {
+    nodeType: string;
+    relation: string | null;
+    planRows: number;
+    actualRows: number;
+    ratio: number;
+    direction: 'underestimated' | 'overestimated';
+};
+
 export type PlanMetrics = {
     planningTimeMs: number | null;
     executionTimeMs: number | null;
@@ -49,6 +74,20 @@ export type PlanMetrics = {
     usedIndex: boolean;
     seqScanCount: number;
     indexScanCount: number;
+    joinAlgorithms?: JoinAlgorithmInfo[];
+    scanMethods?: ScanMethodInfo[];
+    misestimations?: RowMisestimation[];
+};
+
+export type PipelineStageInfo = {
+    rawQuery: string;
+    translatedQuery: string;
+    ast: unknown;
+    astMode: 'ast' | 'regex-fallback' | 'meta';
+    parseError: string | null;
+    statementTypes: string[];
+    tables: string[];
+    dialectTransforms: string[];
 };
 
 export type QueryResult = {
@@ -57,6 +96,7 @@ export type QueryResult = {
     executionTime: string;
     explainPlan: ExplainPlanWrapper[] | null;
     metrics?: PlanMetrics | null;
+    pipeline?: PipelineStageInfo | null;
     suggestions: Suggestion[];
 };
 

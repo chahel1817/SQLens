@@ -4,6 +4,34 @@ const MySQLTranslator = require('../services/mysqlTranslator');
 
 const STATEMENT_TIMEOUT_MS = 8000;
 
+function buildPipelinePayload(rawQuery, translated) {
+    let safeAst = translated.ast || null;
+    if (safeAst) {
+        try {
+            if (JSON.stringify(safeAst).length > 32768) {
+                safeAst = {
+                    truncated: true,
+                    statementTypes: translated.statementTypes || [],
+                    note: 'AST exceeds 32KB preview limit.'
+                };
+            }
+        } catch (_) {
+            safeAst = null;
+        }
+    }
+
+    return {
+        rawQuery: rawQuery.trim(),
+        translatedQuery: translated.pgQuery,
+        ast: safeAst,
+        astMode: translated.astMode || (translated.isMeta ? 'meta' : 'regex-fallback'),
+        parseError: translated.parseError || null,
+        statementTypes: translated.statementTypes || [],
+        tables: translated.tables || [],
+        dialectTransforms: translated.dialectTransforms || [],
+    };
+}
+
 function assertSafeSchemaName(name) {
     if (typeof name !== 'string' || !/^user_\d+(?:_[a-z0-9_]+)?$/i.test(name)) {
         throw new Error('Invalid sandbox schema identifier.');
@@ -72,6 +100,7 @@ exports.runQuery = async (req, res) => {
     try {
         // 1. Translate MySQL → PostgreSQL
         const translated = translator.translate(query);
+        const pipeline = buildPipelinePayload(query, translated);
 
         // 2. Run RULE-BASED analysis on raw MySQL
         const querySuggestions = optimizer.analyzeQuery(query);
@@ -104,6 +133,7 @@ exports.runQuery = async (req, res) => {
                 executionTime: '0s',
                 explainPlan: null,
                 metrics: null,
+                pipeline,
                 suggestions: querySuggestions
             });
         }
@@ -128,6 +158,7 @@ exports.runQuery = async (req, res) => {
                 executionTime: `${executionTime}s`,
                 explainPlan: null,
                 metrics: null,
+                pipeline,
                 suggestions: querySuggestions
             });
         }
@@ -194,6 +225,7 @@ exports.runQuery = async (req, res) => {
             executionTime: `${executionTime}s`,
             explainPlan: explainPlan,
             metrics: planMetrics,
+            pipeline,
             suggestions: allSuggestions
         });
 

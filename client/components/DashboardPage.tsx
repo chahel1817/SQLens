@@ -48,7 +48,7 @@ const THEMES = [
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 type DashboardTab = 'dashboard' | 'queries' | 'performance' | 'logs';
-type ResultTab = 'results' | 'plan' | 'suggestions';
+type ResultTab = 'results' | 'pipeline' | 'plan' | 'suggestions';
 type MonacoEditor = {
   getValue: () => string;
   setValue: (value: string) => void;
@@ -348,7 +348,7 @@ export default function DashboardPage() {
   };
 
   const applyFix = async (fix: string) => {
-    const isDDL = /^\s*(CREATE|ALTER|DROP|SET|INDEX)/i.test(fix);
+    const isDDL = /^\s*(CREATE|ALTER|DROP|SET|INDEX|ANALYZE)/i.test(fix);
 
     if (isDDL) {
       setIsExecuting(true);
@@ -489,6 +489,7 @@ export default function DashboardPage() {
             loadTemplate={loadTemplate}
             history={history}
             resultsRef={resultsRef}
+            applyFix={applyFix}
             renderSuggestions={() => (
               <InsightPanel
                 suggestions={result?.suggestions || []}

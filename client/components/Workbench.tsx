@@ -9,11 +9,13 @@ import {
     Copy,
     Check,
     Terminal,
-    Search
+    Search,
+    GitBranch
 } from 'lucide-react';
 import styles from '../app/page.module.css';
 import { QueryResult } from './types';
 import VisualPlan from './VisualPlan';
+import PipelineView from './PipelineView';
 
 type MonacoEditorHandle = {
     getValue: () => string;
@@ -37,8 +39,8 @@ interface WorkbenchProps {
     handleEditorDidMount: (editor: MonacoEditorHandle, monaco: MonacoApiHandle) => void;
     result: QueryResult | null;
     error: string | null;
-    activeResultTab: 'results' | 'plan' | 'suggestions';
-    setActiveResultTab: (tab: 'results' | 'plan' | 'suggestions') => void;
+    activeResultTab: 'results' | 'pipeline' | 'plan' | 'suggestions';
+    setActiveResultTab: (tab: 'results' | 'pipeline' | 'plan' | 'suggestions') => void;
     copyResults: () => void;
     copied: boolean;
     templates: { label: string; query: string; icon: string }[];
@@ -46,6 +48,7 @@ interface WorkbenchProps {
     history: string[];
     resultsRef: React.RefObject<HTMLDivElement | null>;
     renderSuggestions: () => React.ReactNode;
+    applyFix: (fix: string) => void;
 }
 
 const Workbench: React.FC<WorkbenchProps> = ({
@@ -66,7 +69,8 @@ const Workbench: React.FC<WorkbenchProps> = ({
     loadTemplate,
     history,
     resultsRef,
-    renderSuggestions
+    renderSuggestions,
+    applyFix
 }) => {
 
     // Internal handler to sync state before running
@@ -167,6 +171,12 @@ const Workbench: React.FC<WorkbenchProps> = ({
                                 {result?.results && <span className={styles.tabBadge}>{result.results.length}</span>}
                             </button>
                             <button
+                                className={`${styles.tabBtn} ${activeResultTab === 'pipeline' ? styles.tabActive : ''}`}
+                                onClick={() => setActiveResultTab('pipeline')}
+                            >
+                                <GitBranch size={15} /> Pipeline
+                            </button>
+                            <button
                                 className={`${styles.tabBtn} ${activeResultTab === 'plan' ? styles.tabActive : ''}`}
                                 onClick={() => setActiveResultTab('plan')}
                             >
@@ -227,6 +237,10 @@ const Workbench: React.FC<WorkbenchProps> = ({
                                     </div>
                                 )}
                             </div>
+                        )}
+
+                        {activeResultTab === 'pipeline' && (
+                            <PipelineView result={result} onRunFix={applyFix} />
                         )}
 
                         {activeResultTab === 'plan' && (

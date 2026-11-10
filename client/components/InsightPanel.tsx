@@ -51,7 +51,11 @@ const InsightPanel: React.FC<InsightPanelProps> = ({
                                         style={{ border: '1px solid var(--brand-pink)' }}
                                     >
                                         <Zap size={14} style={{ fill: 'currentColor' }} />
-                                        {/CREATE|ALTER|INDEX/i.test(s.fix) ? 'Auto-Execute Index Fix' : 'Auto-Rewrite Query'}
+                                        {/^\s*ANALYZE\b/i.test(s.fix)
+                                            ? 'Auto-Run ANALYZE Stats'
+                                            : /CREATE|ALTER|INDEX/i.test(s.fix)
+                                                ? 'Auto-Execute Index Fix'
+                                                : 'Auto-Rewrite Query'}
                                         <ArrowRight size={14} />
                                     </button>
                                 )}
