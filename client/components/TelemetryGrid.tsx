@@ -70,7 +70,11 @@ const TelemetryGrid: React.FC<TelemetryGridProps> = ({
                         <Users size={32} />
                         <div>
                             <span className={styles.statValue}>{dbStats?.connections || '0'}</span>
-                            <span className={styles.statLabel}>Active Threads</span>
+                            <span className={styles.statLabel}>
+                                {dbStats?.poolStats
+                                    ? `Pool Active (${dbStats.poolStats.total} total)`
+                                    : 'Pool Active'}
+                            </span>
                         </div>
                     </div>
                     <div className={`${styles.statCard} ${isStatsLoading ? styles.skeleton : ''}`}>
@@ -125,8 +129,12 @@ const TelemetryGrid: React.FC<TelemetryGridProps> = ({
                                 <div className={styles.historyItem} style={{ borderLeft: '3px solid var(--success)' }}>
                                     <ShieldCheck size={14} color="var(--success)" />
                                     <div>
-                                        <div style={{ fontWeight: 600 }}>Data Integrity</div>
-                                        <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>Primary Replica Active</div>
+                                        <div style={{ fontWeight: 600 }}>Pool &amp; Schema Isolation</div>
+                                        <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>
+                                            {dbStats?.poolStats
+                                                ? `${dbStats.poolStats.idle} idle · ${dbStats.poolStats.waiting} queued · SET LOCAL search_path`
+                                                : 'Transactional schema isolation active'}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -137,40 +145,97 @@ const TelemetryGrid: React.FC<TelemetryGridProps> = ({
         );
     }
 
+    const trendBars = analyticsData?.throughputTrend || Array(12).fill(0);
+    const trendCounts = analyticsData?.throughputCounts || Array(12).fill(0);
+    const trendLabels = analyticsData?.throughputLabels || [];
+    const explainedQueries = analyticsData?.explainedQueries || 0;
+    const seqScanQueries = analyticsData?.seqScanQueries || 0;
+    const totalHitBlocks = analyticsData?.totalHitBlocks || 0;
+    const totalReadBlocks = analyticsData?.totalReadBlocks || 0;
+    const hasBufferStats = totalHitBlocks + totalReadBlocks > 0;
+
     // Analytics View
     return (
         <div className={styles.moduleContainer}>
             <div className={styles.moduleHeader}>
                 <h2 className={styles.moduleTitle}>Performance Analytics</h2>
-                <p className={styles.moduleDesc}>Deep dive into query execution patterns and index efficiency.</p>
+                <p className={styles.moduleDesc}>Real per-user query throughput, index plan efficiency, and buffer pool cache I/O.</p>
             </div>
 
             <div className={styles.sideCard} style={{ marginBottom: 24 }}>
-                <h4 className={styles.sideTitle}><TrendingUp size={14} /> Throughput Trend</h4>
-                <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: 8, padding: '20px 0' }}>
-                    {(analyticsData?.throughputTrend || [30, 45, 35, 60, 50, 80, 40, 90, 65, 55, 75, 45]).map((h: any, i: number) => (
-                        <div key={i} style={{ flex: 1, height: `${h}%`, background: 'var(--brand-accent)', opacity: 0.3 + (h / 200), borderRadius: '4px' }}></div>
-                    ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                    <h4 className={styles.sideTitle} style={{ marginBottom: 0 }}>
+                        <TrendingUp size={14} /> Throughput Trend (Last 60m · 5m buckets)
+                    </h4>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.65 }}>
+                        {analyticsData?.totalQueries ?? 0} total recorded queries
+                    </span>
                 </div>
+                <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: 8, padding: '20px 0 8px' }}>
+                    {trendBars.map((h: number, i: number) => {
+                        const count = trendCounts[i] ?? 0;
+                        const label = trendLabels[i] ? `${trendLabels[i]} — ` : '';
+                        return (
+                            <div
+                                key={i}
+                                title={`${label}${count} ${count === 1 ? 'query' : 'queries'}`}
+                                style={{
+                                    flex: 1,
+                                    height: `${Math.max(h, 3)}%`,
+                                    background: count > 0 ? 'var(--brand-accent)' : 'var(--border)',
+                                    opacity: count > 0 ? 0.45 + (h / 180) : 0.35,
+                                    borderRadius: '4px',
+                                    transition: 'height 0.3s ease'
+                                }}
+                            />
+                        );
+                    })}
+                </div>
+                {trendLabels.length === 12 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', opacity: 0.55 }}>
+                        <span>{trendLabels[0]}</span>
+                        <span>{trendLabels[6]}</span>
+                        <span>{trendLabels[11]}</span>
+                    </div>
+                )}
             </div>
 
             <div className={styles.workspaceLayout} style={{ padding: 0 }}>
                 <div className={styles.workspaceLeft}>
                     <div className={styles.sideCard}>
-                        <h4 className={styles.sideTitle}>Index Hit Rate</h4>
+                        <h4 className={styles.sideTitle}>Index Plan Efficiency</h4>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                            <div style={{ width: 80, height: 80, borderRadius: '50%', border: '8px solid var(--brand-accent)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                                {analyticsData?.indexHitRate || 0}%
+                            <div style={{ width: 80, height: 80, borderRadius: '50%', border: '8px solid var(--brand-accent)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
+                                {explainedQueries > 0 ? `${analyticsData?.indexHitRate ?? 0}%` : 'N/A'}
                             </div>
-                            <p style={{ opacity: 0.6, fontSize: '0.85rem' }}>Your queries are effectively utilizing indexes. No full table scans detected in recent traffic.</p>
+                            <p style={{ opacity: 0.72, fontSize: '0.85rem', lineHeight: 1.5 }}>
+                                {explainedQueries === 0
+                                    ? 'No EXPLAIN ANALYZE plans recorded yet. Run a SELECT query in Workbench to measure real index vs sequential scan usage.'
+                                    : seqScanQueries > 0
+                                        ? `${seqScanQueries} of ${explainedQueries} explained queries triggered a Sequential Scan. Add targeted indexes to improve plan efficiency.`
+                                        : `All ${explainedQueries} explained queries executed without full-table sequential scans.`}
+                            </p>
                         </div>
                     </div>
                 </div>
                 <div className={styles.workspaceRight} style={{ top: 0 }}>
                     <div className={styles.sideCard}>
-                        <h4 className={styles.sideTitle}>System Health</h4>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                            Server Uptime: {formatUptime(Number(dbStats?.uptime))}
+                        <h4 className={styles.sideTitle}>Buffer Pool &amp; System Health</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem', opacity: 0.85 }}>
+                            <div>
+                                <strong>Buffer Cache Hit Rate:</strong>{' '}
+                                {hasBufferStats && analyticsData?.bufferHitRate !== null && analyticsData?.bufferHitRate !== undefined
+                                    ? `${analyticsData.bufferHitRate}% (${totalHitBlocks} hit / ${totalReadBlocks} disk reads)`
+                                    : 'No 8KB page reads recorded yet'}
+                            </div>
+                            <div>
+                                <strong>Server Uptime:</strong> {formatUptime(Number(dbStats?.uptime))}
+                            </div>
+                            {dbStats?.poolStats && (
+                                <div>
+                                    <strong>pg.Pool:</strong> {dbStats.poolStats.active} active · {dbStats.poolStats.idle} idle · {dbStats.poolStats.waiting} waiting
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

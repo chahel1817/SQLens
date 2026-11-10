@@ -4,14 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft,
-    Code2,
-    Server,
     Terminal,
-    Key,
     Activity,
     Lock,
-    Globe,
-    Cpu
+    Globe
 } from 'lucide-react';
 import styles from '../docs-styles.module.css';
 
@@ -117,8 +113,8 @@ export default function ApiDocsPage() {
                             <div className={styles.codeLabel}>Endpoint</div>
                             <pre style={{ background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.9rem' }}>/api/stats/stream</pre>
                             <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
-                                Opens a persistent connection that streams database throughput, average latency,
-                                and connection pool status every 2 seconds.
+                                Opens a persistent connection that streams per-user query throughput, P95 latency,
+                                buffer cache hit rate, and Node.js <code>pg.Pool</code> status every 5 seconds.
                             </p>
                         </div>
                     </section>

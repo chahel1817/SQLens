@@ -31,28 +31,38 @@ class MySQLTranslator {
         }
 
         if (upper.startsWith('DESC ') || upper.startsWith('DESCRIBE ')) {
-            const tableName = trimmed.split(/\s+/)[1].replace(/`/g, '').toLowerCase();
+            const rawTable = trimmed.split(/\s+/)[1]?.replace(/`/g, '').toLowerCase() || '';
+            if (!/^[a-z_][a-z0-9_]*$/.test(rawTable)) {
+                throw new Error('Invalid table name in DESCRIBE statement.');
+            }
             return {
                 isMeta: false,
-                pgQuery: `SELECT column_name AS "Field", data_type AS "Type", is_nullable AS "Null", column_default AS "Default" FROM information_schema.columns WHERE table_schema = '${this.activeDb}' AND table_name = '${tableName}' ORDER BY ordinal_position`
+                pgQuery: `SELECT column_name AS "Field", data_type AS "Type", is_nullable AS "Null", column_default AS "Default" FROM information_schema.columns WHERE table_schema = '${this.activeDb}' AND table_name = '${rawTable}' ORDER BY ordinal_position`
             };
         }
 
         if (upper.startsWith('SHOW COLUMNS FROM')) {
-            const tableName = trimmed.split(/\s+/)[3].replace(/`/g, '').toLowerCase();
+            const rawTable = trimmed.split(/\s+/)[3]?.replace(/`/g, '').toLowerCase() || '';
+            if (!/^[a-z_][a-z0-9_]*$/.test(rawTable)) {
+                throw new Error('Invalid table name in SHOW COLUMNS statement.');
+            }
             return {
                 isMeta: false,
-                pgQuery: `SELECT column_name AS "Field", data_type AS "Type", is_nullable AS "Null", column_default AS "Default" FROM information_schema.columns WHERE table_schema = '${this.activeDb}' AND table_name = '${tableName}' ORDER BY ordinal_position`
+                pgQuery: `SELECT column_name AS "Field", data_type AS "Type", is_nullable AS "Null", column_default AS "Default" FROM information_schema.columns WHERE table_schema = '${this.activeDb}' AND table_name = '${rawTable}' ORDER BY ordinal_position`
             };
         }
 
         // ── USE database ──
         if (upper.startsWith('USE ')) {
-            const dbName = trimmed.split(/\s+/)[1].replace(/`/g, '').toLowerCase();
+            const dbName = trimmed.split(/\s+/)[1]?.replace(/`/g, '').toLowerCase() || '';
+            if (!/^[a-z0-9_]+$/.test(dbName)) {
+                throw new Error('Invalid database name in USE statement.');
+            }
             const targetSchema = dbName === this.userSchema ? this.userSchema : `${this.userSchema}_${dbName}`;
             this.activeDb = targetSchema;
             return {
                 isMeta: true,
+                targetSchema,
                 pgQuery: `SET search_path TO ${targetSchema}`,
                 message: `Database changed to "${dbName}"`
             };

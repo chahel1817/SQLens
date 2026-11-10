@@ -5,19 +5,27 @@ import Editor from '@monaco-editor/react';
 import {
     ZapIcon,
     Play,
-    Database,
     History,
     Copy,
     Check,
     Terminal,
-    Settings,
-    ChevronRight,
-    Search,
-    BookOpen
+    Search
 } from 'lucide-react';
 import styles from '../app/page.module.css';
 import { QueryResult } from './types';
 import VisualPlan from './VisualPlan';
+
+type MonacoEditorHandle = {
+    getValue: () => string;
+    setValue: (value: string) => void;
+    addCommand: (command: number, callback: () => void) => void;
+    updateOptions: (options: Record<string, unknown>) => void;
+};
+
+type MonacoApiHandle = {
+    KeyMod: { CtrlCmd: number };
+    KeyCode: { Enter: number };
+};
 
 interface WorkbenchProps {
     query: string;
@@ -25,8 +33,8 @@ interface WorkbenchProps {
     isExecuting: boolean;
     handleRun: () => void;
     theme: string;
-    editorRef: React.MutableRefObject<any>;
-    handleEditorDidMount: (editor: any, monaco: any) => void;
+    editorRef: React.MutableRefObject<MonacoEditorHandle | null>;
+    handleEditorDidMount: (editor: MonacoEditorHandle, monaco: MonacoApiHandle) => void;
     result: QueryResult | null;
     error: string | null;
     activeResultTab: 'results' | 'plan' | 'suggestions';
@@ -205,7 +213,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
                                         <tbody>
                                             {result.results.map((row, i) => (
                                                 <tr key={i}>
-                                                    {Object.values(row).map((val: any, j) => (
+                                                    {Object.values(row).map((val: unknown, j) => (
                                                         <td key={j}>{String(val)}</td>
                                                     ))}
                                                 </tr>
@@ -263,13 +271,37 @@ const Workbench: React.FC<WorkbenchProps> = ({
                     <h4 className={styles.sideTitle}><Terminal size={14} /> Environment</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                            <span style={{ opacity: 0.6 }}>Engine</span>
-                            <span style={{ fontWeight: 700 }}>MySQL 8.0</span>
+                            <span style={{ opacity: 0.6 }}>SQL Dialect</span>
+                            <span style={{ fontWeight: 700 }}>MySQL → PG AST</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                            <span style={{ opacity: 0.6 }}>Driver</span>
-                            <span style={{ fontWeight: 700, color: 'var(--neon-green)' }}>Active</span>
+                            <span style={{ opacity: 0.6 }}>Execution Engine</span>
+                            <span style={{ fontWeight: 700 }}>PostgreSQL (Schema Isolated)</span>
                         </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                            <span style={{ opacity: 0.6 }}>Pool Driver</span>
+                            <span style={{ fontWeight: 700, color: 'var(--neon-green)' }}>pg.Pool Active</span>
+                        </div>
+                        {result?.metrics && (
+                            <>
+                                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                                    <span style={{ opacity: 0.6 }}>Plan / Exec Time</span>
+                                    <span style={{ fontWeight: 700 }}>
+                                        {result.metrics.planningTimeMs !== null ? `${result.metrics.planningTimeMs.toFixed(2)}ms` : '—'}
+                                        {' / '}
+                                        {result.metrics.executionTimeMs !== null ? `${result.metrics.executionTimeMs.toFixed(2)}ms` : result.executionTime}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                                    <span style={{ opacity: 0.6 }}>8KB Buffer Cache</span>
+                                    <span style={{ fontWeight: 700 }}>
+                                        {result.metrics.bufferHitRate !== null
+                                            ? `${result.metrics.bufferHitRate}% (${result.metrics.sharedHitBlocks} hit / ${result.metrics.sharedReadBlocks} read)`
+                                            : '0 pages'}
+                                    </span>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

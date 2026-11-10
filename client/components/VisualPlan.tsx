@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
     Layers,
     Search,
-    ArrowRightLeft,
     GitMerge,
     Filter,
     Zap,
@@ -15,13 +14,13 @@ import {
     ChevronRight,
     Cpu,
     HardDrive,
-    TrendingUp,
-    Info
+    TrendingUp
 } from 'lucide-react';
 import styles from '../app/page.module.css';
+import { ExplainPlanNode, ExplainPlanWrapper } from './types';
 
 interface PlanNodeProps {
-    node: any;
+    node: ExplainPlanNode;
     depth?: number;
     totalRootCost: number;
     totalRootTime?: number;
@@ -39,11 +38,15 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
     const planRows = node['Plan Rows'];
     const totalCost = node['Total Cost'];
     const actualTotalTime = node['Actual Total Time'];
+    const sharedHit = node['Shared Hit Blocks'] ?? 0;
+    const sharedRead = node['Shared Read Blocks'] ?? 0;
     const children = node.Plans || [];
 
     // Calculate percentages
-    const costPercentage = totalRootCost > 0 ? (totalCost / totalRootCost) * 100 : 0;
-    const timePercentage = totalRootTime && totalRootTime > 0 ? (actualTotalTime / totalRootTime) * 100 : 0;
+    const costPercentage = totalRootCost > 0 ? Math.min((totalCost / totalRootCost) * 100, 100) : 0;
+    const timePercentage = totalRootTime && totalRootTime > 0 && actualTotalTime !== undefined
+        ? (actualTotalTime / totalRootTime) * 100
+        : 0;
 
     // Choose icon based on node type
     const getIcon = () => {
@@ -59,8 +62,8 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
 
     // Determine color/severity based on percentages
     const getNodeVariant = () => {
-        if (costPercentage > 40 || (timePercentage > 40)) return styles.nodeCritical;
-        if (costPercentage > 15 || (timePercentage > 15)) return styles.nodeWarning;
+        if (costPercentage > 40 || timePercentage > 40) return styles.nodeCritical;
+        if (costPercentage > 15 || timePercentage > 15) return styles.nodeWarning;
         return styles.nodeDefault;
     };
 
@@ -108,7 +111,7 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
                 <div className={styles.nodeGrid}>
                     <div className={styles.gridItem}>
                         <div className={styles.gridLabel}>Rows</div>
-                        <div className={styles.gridValue}>{actualRows ?? planRows}</div>
+                        <div className={styles.gridValue}>{actualRows ?? planRows ?? 0}</div>
                     </div>
                     <div className={styles.gridItem}>
                         <div className={styles.gridLabel}>Total Cost</div>
@@ -122,9 +125,18 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
                     )}
                     <div className={styles.gridItem}>
                         <div className={styles.gridLabel}>Width</div>
-                        <div className={styles.gridValue}>{node['Plan Width']}B</div>
+                        <div className={styles.gridValue}>{node['Plan Width'] ?? 0}B</div>
                     </div>
                 </div>
+
+                {(sharedHit > 0 || sharedRead > 0) && (
+                    <div className={styles.nodeMeta} style={{ color: sharedRead > 0 ? '#F59E0B' : '#22C55E', background: 'rgba(59, 130, 246, 0.06)', borderTop: '1px solid rgba(59, 130, 246, 0.14)' }}>
+                        <HardDrive size={10} />
+                        <span>
+                            8KB Pages: {sharedHit} hit (RAM) · {sharedRead} read (disk)
+                        </span>
+                    </div>
+                )}
 
                 {node.Filter && (
                     <div className={styles.nodeMeta}>
@@ -140,7 +152,7 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
 
             {isExpanded && children.length > 0 && (
                 <div className={styles.childPlans}>
-                    {children.map((subPlan: any, i: number) => (
+                    {children.map((subPlan, i) => (
                         <PlanNode
                             key={i}
                             node={subPlan}
@@ -155,7 +167,7 @@ const PlanNode: React.FC<PlanNodeProps> = ({ node, depth = 0, totalRootCost, tot
     );
 };
 
-const VisualPlan: React.FC<{ plan: any }> = ({ plan }) => {
+const VisualPlan: React.FC<{ plan: ExplainPlanWrapper[] | null }> = ({ plan }) => {
     if (!plan || !plan[0] || !plan[0].Plan) {
         return (
             <div className={styles.emptyPlan}>
@@ -165,9 +177,15 @@ const VisualPlan: React.FC<{ plan: any }> = ({ plan }) => {
         );
     }
 
-    const rootNode = plan[0].Plan;
+    const wrapper = plan[0];
+    const rootNode = wrapper.Plan;
     const totalCost = rootNode['Total Cost'];
-    const totalTime = rootNode['Actual Total Time'];
+    const totalTime = wrapper['Execution Time'] ?? rootNode['Actual Total Time'];
+    const planningTime = wrapper['Planning Time'];
+    const sharedHit = rootNode['Shared Hit Blocks'] ?? 0;
+    const sharedRead = rootNode['Shared Read Blocks'] ?? 0;
+    const totalBlocks = sharedHit + sharedRead;
+    const bufferRatio = totalBlocks > 0 ? Math.round((sharedHit / totalBlocks) * 100) : null;
 
     return (
         <div className={styles.visualPlanContainer}>
@@ -177,17 +195,29 @@ const VisualPlan: React.FC<{ plan: any }> = ({ plan }) => {
                         <Activity size={18} color="var(--brand-pink)" />
                         <h3>Query Insights Tree</h3>
                     </div>
-                    <p>Interactive tree representing the engine's execution path.</p>
+                    <p>Interactive tree representing the engine&apos;s execution path and 8KB buffer I/O.</p>
                 </div>
                 <div className={styles.headerStats}>
                     <div className={styles.headerStatBox}>
                         <span>Total Cost</span>
                         <strong>{totalCost}</strong>
                     </div>
-                    {totalTime && (
+                    {planningTime !== undefined && (
                         <div className={styles.headerStatBox}>
-                            <span>Total Time</span>
-                            <strong>{totalTime}ms</strong>
+                            <span>Planning</span>
+                            <strong>{planningTime.toFixed(2)}ms</strong>
+                        </div>
+                    )}
+                    {totalTime !== undefined && (
+                        <div className={styles.headerStatBox}>
+                            <span>Execution</span>
+                            <strong>{totalTime.toFixed(2)}ms</strong>
+                        </div>
+                    )}
+                    {bufferRatio !== null && (
+                        <div className={styles.headerStatBox}>
+                            <span>Buffer Cache</span>
+                            <strong>{bufferRatio}% ({sharedHit}/{totalBlocks})</strong>
                         </div>
                     )}
                 </div>

@@ -7,6 +7,7 @@ const isExternal = connectionString && (connectionString.includes('render.com') 
 const pool = new Pool({
     connectionString: connectionString,
     ssl: isExternal ? { rejectUnauthorized: false } : false,
+    max: 10,
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 30000,
     keepAlive: true,
@@ -38,7 +39,59 @@ const queryWithRetry = async (text, params, retries = 3) => {
     }
 };
 
+let schemaMigrationPromise = null;
+
+const ensureTelemetrySchema = () => {
+    if (!schemaMigrationPromise) {
+        schemaMigrationPromise = (async () => {
+            try {
+                await queryWithRetry(`
+                    ALTER TABLE public.query_history
+                        ADD COLUMN IF NOT EXISTS planning_time_ms DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS execution_time_ms DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS shared_hit_blocks BIGINT DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS shared_read_blocks BIGINT DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS used_index BOOLEAN DEFAULT FALSE,
+                        ADD COLUMN IF NOT EXISTS seq_scan_count INT DEFAULT 0;
+                `);
+
+                await queryWithRetry(`
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = 'query_history'
+                              AND column_name = 'execution_time'
+                              AND data_type <> 'double precision'
+                        ) THEN
+                            ALTER TABLE public.query_history ALTER COLUMN execution_time TYPE DOUBLE PRECISION;
+                        END IF;
+                    END $$;
+                `);
+
+                await queryWithRetry(`
+                    CREATE INDEX IF NOT EXISTS idx_history_user_created
+                    ON public.query_history(user_id, created_at DESC);
+                `);
+            } catch (err) {
+                console.warn('Telemetry schema migration check skipped/failed:', err.message);
+            }
+        })();
+    }
+    return schemaMigrationPromise;
+};
+
+const getPoolStats = () => ({
+    total: pool.totalCount,
+    idle: pool.idleCount,
+    waiting: pool.waitingCount,
+    active: Math.max(pool.totalCount - pool.idleCount, 0),
+});
+
 module.exports = {
     query: queryWithRetry,
-    pool // Export the pool itself for more complex transactions if needed
+    pool, // Export the pool itself for more complex transactions if needed
+    ensureTelemetrySchema,
+    getPoolStats,
 };

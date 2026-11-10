@@ -216,6 +216,64 @@ exports.analyzePlan = (plan) => {
     return suggestions;
 };
 
+/**
+ * Extracts buffer pool I/O, scan counts, and timing metrics from EXPLAIN (FORMAT JSON, ANALYZE, BUFFERS).
+ * Uses the root Plan node for cumulative block counts to avoid double-counting child nodes.
+ */
+exports.extractPlanMetrics = (plan) => {
+    const empty = {
+        planningTimeMs: null,
+        executionTimeMs: null,
+        sharedHitBlocks: 0,
+        sharedReadBlocks: 0,
+        sharedDirtiedBlocks: 0,
+        sharedWrittenBlocks: 0,
+        bufferHitRate: null,
+        usedIndex: false,
+        seqScanCount: 0,
+        indexScanCount: 0,
+    };
+
+    if (!Array.isArray(plan) || !plan[0] || !plan[0].Plan) {
+        return empty;
+    }
+
+    const rootWrapper = plan[0];
+    const rootNode = rootWrapper.Plan;
+
+    let seqScanCount = 0;
+    let indexScanCount = 0;
+
+    const walk = (node) => {
+        if (!node) return;
+        const type = node['Node Type'] || '';
+        if (type === 'Seq Scan') seqScanCount += 1;
+        if (type.includes('Index')) indexScanCount += 1;
+        if (Array.isArray(node.Plans)) node.Plans.forEach(walk);
+    };
+
+    walk(rootNode);
+
+    const sharedHitBlocks = Number(rootNode['Shared Hit Blocks'] || 0);
+    const sharedReadBlocks = Number(rootNode['Shared Read Blocks'] || 0);
+    const sharedDirtiedBlocks = Number(rootNode['Shared Dirtied Blocks'] || 0);
+    const sharedWrittenBlocks = Number(rootNode['Shared Written Blocks'] || 0);
+    const totalBlocks = sharedHitBlocks + sharedReadBlocks;
+
+    return {
+        planningTimeMs: typeof rootWrapper['Planning Time'] === 'number' ? rootWrapper['Planning Time'] : null,
+        executionTimeMs: typeof rootWrapper['Execution Time'] === 'number' ? rootWrapper['Execution Time'] : null,
+        sharedHitBlocks,
+        sharedReadBlocks,
+        sharedDirtiedBlocks,
+        sharedWrittenBlocks,
+        bufferHitRate: totalBlocks > 0 ? Math.round((sharedHitBlocks / totalBlocks) * 1000) / 10 : null,
+        usedIndex: indexScanCount > 0,
+        seqScanCount,
+        indexScanCount,
+    };
+};
+
 
 // ═══════════════════════════════════════════════════════
 //  LAYER 2: AI-POWERED DEEP ANALYSIS (OpenRouter)

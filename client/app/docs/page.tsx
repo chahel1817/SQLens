@@ -4,17 +4,13 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     ArrowLeft,
-    BookOpen,
     Zap,
-    Database,
     ShieldCheck,
     Cpu,
     Network,
     Code2,
     Info,
     GitBranch,
-    Search,
-    ChevronRight,
     Terminal
 } from 'lucide-react';
 import styles from '../docs-styles.module.css';
@@ -110,7 +106,7 @@ export default function DocsPage() {
                                 <span className={styles.highlight}>-- Original MySQL</span><br />
                                 SELECT * FROM users LIMIT 10, 5;<br /><br />
                                 <span className={styles.highlight}>-- Translated PostgreSQL</span><br />
-                                SELECT * FROM "users" LIMIT 5 OFFSET 10;
+                                SELECT * FROM &quot;users&quot; LIMIT 5 OFFSET 10;
                             </pre>
                         </div>
 
@@ -121,7 +117,7 @@ export default function DocsPage() {
                             </div>
                             <div className={styles.card}>
                                 <h3>Quoting</h3>
-                                <p>Converts MySQL backticks (<code>`</code>) to PostgreSQL double quotes (<code>"</code>) to ensure identifier safety.</p>
+                                <p>Converts MySQL backticks (<code>`</code>) to PostgreSQL double quotes (<code>&quot;</code>) to ensure identifier safety.</p>
                             </div>
                         </div>
                     </section>
@@ -151,8 +147,8 @@ export default function DocsPage() {
                                 </div>
                                 <h3>Layer 2: AI Deep Analysis</h3>
                                 <p>
-                                    On-demand analysis powered by LLMs. It correlates your SQL text with the
-                                    actual <strong>EXPLAIN ANALYZE</strong> plan from the database.
+                                    On-demand analysis powered by LLMs (via OpenRouter with rule-based fallback). It correlates your SQL text with the
+                                    actual <strong>EXPLAIN (ANALYZE, BUFFERS)</strong> plan from PostgreSQL.
                                 </p>
                             </div>
                         </div>
@@ -183,7 +179,7 @@ export default function DocsPage() {
                                     <span className={styles.highlight}>Color Coding:</span> Pink nodes are bottlenecks (High Cost), Green nodes are efficient.
                                 </li>
                                 <li>
-                                    <span className={styles.highlight}>Cost Impact:</span> Subtle bars show exactly what % of the query's total time was spent in that branch.
+                                    <span className={styles.highlight}>Cost &amp; Buffer Impact:</span> Bars show each branch&apos;s cost share alongside real 8KB RAM buffer hits vs disk page reads.
                                 </li>
                             </ul>
                         </div>
@@ -193,17 +189,17 @@ export default function DocsPage() {
                     <section id="telemetry" className={styles.section}>
                         <h2><Terminal size={28} color="#00E4FF" /> Real-time Telemetry</h2>
                         <p className={styles.sectionText}>
-                            SQLens doesn't just analyze queries; it watches your database health in real-time.
+                            SQLens doesn&apos;t just analyze queries; it watches your database health in real-time.
                         </p>
 
                         <div className={styles.featureGrid}>
                             <div className={styles.card}>
                                 <h3>SSE Streaming</h3>
-                                <p>Uses Server-Sent Events to push database metrics (CPU, Connections, Throughput) to the UI without refreshing.</p>
+                                <p>Uses Server-Sent Events to push per-user QPS, P95 latency, <code>pg.Pool</code> status, and buffer hit rates every 5 seconds.</p>
                             </div>
                             <div className={styles.card}>
                                 <h3>Slow Query Log</h3>
-                                <p>Automatically captures and highlights queries exceeding the 100ms threshold for immediate triage.</p>
+                                <p>Automatically captures and highlights queries exceeding the 250ms threshold for immediate triage.</p>
                             </div>
                         </div>
                     </section>
