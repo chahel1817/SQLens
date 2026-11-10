@@ -220,7 +220,7 @@ class MySQLTranslator {
         if (/\bENGINE\s*=\s*\w+/i.test(rawQuery)) {
             transforms.push('Stripped MySQL storage ENGINE clause');
         }
-        if (/\bSHOW\s+|DESC(?:RIBE)?\s+/i.test(rawQuery)) {
+        if (/^\s*(?:SHOW\s+|DESC(?:RIBE)?\s+)/i.test(rawQuery)) {
             transforms.push('MySQL metadata command → information_schema catalog query');
         }
         return transforms;
